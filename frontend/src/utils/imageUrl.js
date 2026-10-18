@@ -1,5 +1,5 @@
 // src/utils/imageUrl.js
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5002';
+const API_URL = import.meta.env.PROD ? '' : 'http://localhost:5002';
 
 const FALLBACK =
   'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600&q=80';

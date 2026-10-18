@@ -28,7 +28,7 @@ export default function SelectVehicle() {
     const fetchVehicles = async () => {
       setLoading(true);
       try {
-        const url = new URL('http://localhost:5002/api/prices/trip');
+        const url = new URL('/api/prices/trip', window.location.origin);
         url.searchParams.append('from', tripData.from);
         url.searchParams.append('to', tripData.to);
         // Normaliser tripType : 'one-way' → 'one_way', 'round-trip' → 'round_trip'
