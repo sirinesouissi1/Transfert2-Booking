@@ -1,0 +1,77 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { box-sizing: border-box; }
+  body {
+    background-color: #0A0A0F;
+    color: #F8F5EE;
+    font-family: 'Outfit', sans-serif;
+    overflow-x: hidden;
+  }
+  h1, h2, h3, h4 { font-family: 'Cormorant Garamond', serif; }
+}
+
+
+
+@layer utilities {
+  .text-gradient-gold {
+    background: linear-gradient(135deg, #C9A84C, #E8C97A);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
+  .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+}
+
+/* Scroll reveal */
+.reveal {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.8s ease, transform 0.8s ease;
+}
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+
+
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  /* Thème sombre (par défaut) */
+  :root {
+    --bg-color: #0A0A0F;
+    --text-color: #F8F5EE;
+  }
+
+  /* Thème clair (quand la classe .light-theme est ajoutée à l'élément html) */
+  html.light-theme {
+    --bg-color: #FFFFFF;
+    --text-color: #1F1F1F;
+  }
+
+  body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: 'Outfit', sans-serif;
+    overflow-x: hidden;
+    transition: background-color 0.3s ease, color 0.3s ease; /* optionnel */
+  }
+
+  h1, h2, h3, h4 {
+    font-family: 'Cormorant Garamond', serif;
+  }
+  .hero-image {
+  image-rendering: auto; /* par défaut */
+  image-rendering: -webkit-optimize-contrast; /* améliore la netteté sur certains navigateurs */
+}
+}
+
