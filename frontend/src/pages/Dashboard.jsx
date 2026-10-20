@@ -29,6 +29,7 @@ import {
   FiPlus,
   FiCheck,
   FiSave,
+  FiImage,
 } from 'react-icons/fi';
 
 const STATUS_STYLES = {
@@ -45,6 +46,14 @@ const STATUS_LABELS = {
   'in-progress': 'En cours',
   completed: 'Terminé',
   cancelled: 'Annulé',
+};
+
+// Helper d'affichage du prix (null / undefined / 0 = "sur demande")
+const formatPrice = (value) => {
+  if (value === null || value === undefined || Number(value) === 0) {
+    return <span className="italic text-muted text-sm">Prix sur demande</span>;
+  }
+  return <span>{value} €</span>;
 };
 
 export default function Dashboard() {
@@ -154,11 +163,9 @@ export default function Dashboard() {
         const excursionsRes = await excursionAPI.getAll({ limit: 100 });
         setExcursions(excursionsRes.data.excursions || []);
 
-        // ── Charger TOUTES les réservations d'excursions (pour le calendrier) ──
         const allExcursionBookings = await excursionBookingAPI.getAll();
         setExcursionBookingsAll(allExcursionBookings.data.bookings || []);
 
-        // Vue dédiée (déjà existante)
         if (currentView === 'excursionBookings') {
           setExcursionBookings(allExcursionBookings.data.bookings || []);
         }
@@ -290,7 +297,6 @@ export default function Dashboard() {
             active={isActive('excursions')}
           />
 
-          {/* Prix Véhicule par Destination */}
           <NavLink
             onClick={() => {
               setCurrentView('vehiculePricing');
@@ -301,7 +307,6 @@ export default function Dashboard() {
             active={isActive('vehiculePricing')}
           />
 
-          {/* Réservations (bloc déroulant) */}
           <div className="pt-2">
             <button
               onClick={() => setBookingsOpen(!bookingsOpen)}
@@ -337,7 +342,6 @@ export default function Dashboard() {
             )}
           </div>
 
-          {/* Calendrier */}
           <NavLink
             onClick={() => setCurrentView('calendar')}
             icon={<FiCalendar />}
@@ -395,7 +399,6 @@ export default function Dashboard() {
                 <StatCard title="Terminées" value={completedBookings} change="+8%" trend="up" icon={<FiTrendingUp />} />
               </div>
 
-              {/* Graphiques */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
                 <div className="bg-dark-2 border border-white/5 p-6 rounded-lg">
                   <h3 className="text-lg font-serif mb-4 text-cream">Évolution des réservations</h3>
@@ -484,7 +487,7 @@ export default function Dashboard() {
                           </div>
                           <div className="text-right">
                             <div className="text-xs text-gold">
-                              {(b.total ?? b.totalPrice) === 0 ? 'Sur demande' : `${b.total ?? b.totalPrice} €`}
+                              {formatPrice(b.total ?? b.totalPrice)}
                             </div>
                             <div className={`text-xs ${STATUS_STYLES[b.status]?.split(' ')[0] || 'text-muted'}`}>
                               {STATUS_LABELS[b.status]}
@@ -497,7 +500,6 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {/* Liste détaillée des réservations */}
               <div>
                 <h2 className="text-xl font-serif mb-4">
                   {isAdmin ? 'Toutes les réservations' : 'Mes réservations'}
@@ -544,11 +546,7 @@ export default function Dashboard() {
                         <div className="flex items-center gap-4">
                           <div className="text-right">
                             <div className="font-serif text-xl text-gold">
-                              {(b.total ?? b.totalPrice) === 0 ? (
-                                <span className="text-sm italic text-muted">Prix sur demande</span>
-                              ) : (
-                                `${b.total ?? b.totalPrice ?? 0} €`
-                              )}
+                              {formatPrice(b.total ?? b.totalPrice)}
                             </div>
                             <div className={`text-xs border px-2 py-0.5 mt-1 ${STATUS_STYLES[b.status] || ''}`}>
                               {STATUS_LABELS[b.status]}
@@ -1123,6 +1121,8 @@ function VehicleList({ vehicles, loading, isAdmin, onCreate, onView, onEdit, onD
               <th className="px-6 py-4 text-left text-muted font-medium">Image</th>
               <th className="px-6 py-4 text-left text-muted font-medium">Nom</th>
               <th className="px-6 py-4 text-left text-muted font-medium">Description</th>
+              <th className="px-6 py-4 text-left text-muted font-medium">Prix</th>
+              <th className="px-6 py-4 text-left text-muted font-medium">Capacité</th>
               <th className="px-6 py-4 text-left text-muted font-medium">Actions</th>
             </tr>
           </thead>
@@ -1130,15 +1130,23 @@ function VehicleList({ vehicles, loading, isAdmin, onCreate, onView, onEdit, onD
             {vehicles.map((v) => (
               <tr key={v._id} className="border-b border-white/5 hover:bg-white/5">
                 <td className="px-6 py-4">
-                  <img
-                    src={getImageUrl(v.image)}
-                    alt={v.name}
-                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                    className="h-12 w-12 object-contain"
-                  />
+                  {v.image ? (
+                    <img
+                      src={getImageUrl(v.image)}
+                      alt={v.name}
+                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                      className="h-12 w-12 object-cover rounded"
+                    />
+                  ) : (
+                    <div className="h-12 w-12 bg-dark-3 rounded flex items-center justify-center">
+                      <FiTruck className="text-gold/30" size={18} />
+                    </div>
+                  )}
                 </td>
                 <td className="px-6 py-4 font-medium">{v.name}</td>
                 <td className="px-6 py-4 text-muted max-w-xs truncate">{v.description}</td>
+                <td className="px-6 py-4 text-gold">{formatPrice(v.price)}</td>
+                <td className="px-6 py-4 text-muted">{v.capacity ? `${v.capacity} pers.` : '-'}</td>
                 <td className="px-6 py-4">
                   <ActionButtons onView={() => onView(v)} onEdit={() => onEdit(v)} onDelete={() => onDelete(v._id)} isAdmin={isAdmin} />
                 </td>
@@ -1235,13 +1243,7 @@ function TransferList({ bookings, loading, isAdmin, onView, onEdit, onDelete }) 
                 <td className="p-4">{b.from} → {b.to}</td>
                 <td className="p-4">{new Date(b.departureDate).toLocaleDateString('fr-FR')}</td>
                 <td className="p-4">{b.vehicle?.name || '-'}</td>
-                <td className="p-4">
-                  {(!b.totalPrice && b.totalPrice !== 0) || b.totalPrice === 0 ? (
-                    <span className="text-muted italic">Prix sur demande</span>
-                  ) : (
-                    <span>{b.totalPrice ?? b.total ?? 0} €</span>
-                  )}
-                </td>
+                <td className="p-4">{formatPrice(b.totalPrice ?? b.total)}</td>
                 <td className="p-4">
                   <span className={`text-xs border px-2 py-1 ${STATUS_STYLES[b.status] || ''}`}>
                     {STATUS_LABELS[b.status]}
@@ -1286,7 +1288,7 @@ function ExcursionBookingList({ bookings, loading, isAdmin, onView, onEdit, onDe
                 <td className="p-4">{b.excursion?.name || '-'}</td>
                 <td className="p-4">{new Date(b.preferredDate).toLocaleDateString('fr-FR')}</td>
                 <td className="p-4">{b.groupSize} pers.</td>
-                <td className="p-4">{b.totalPrice ?? b.total ?? 0} €</td>
+                <td className="p-4">{formatPrice(b.totalPrice ?? b.total)}</td>
                 <td className="p-4">
                   <span className={`text-xs border px-2 py-1 ${STATUS_STYLES[b.status] || ''}`}>
                     {STATUS_LABELS[b.status]}
@@ -1304,22 +1306,56 @@ function ExcursionBookingList({ bookings, loading, isAdmin, onView, onEdit, onDe
   );
 }
 
+// ------------------------------------------------------------------
+// Modal VUE / ÉDITION (avec upload image pour véhicule & excursion)
+// ------------------------------------------------------------------
 function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin }) {
   const [formData, setFormData] = useState(item || {});
   const [status, setStatus] = useState(item?.status || 'pending');
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
 
   if (!item) return null;
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
+  const handleImageChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) { setImageFile(null); setImagePreview(null); return; }
+    if (!file.type.startsWith('image/')) return;
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (type === 'edit') {
-      if (resource === 'transfer' || resource === 'excursionBooking') {
-        onUpdate(resource, item._id, { status });
-      } else {
-        onUpdate(resource, item._id, formData);
+    if (type !== 'edit') return;
+
+    if (resource === 'transfer' || resource === 'excursionBooking') {
+      onUpdate(resource, item._id, { status });
+      return;
+    }
+
+    // Véhicule ou excursion : construire un FormData si image
+    if ((resource === 'vehicle' || resource === 'excursion') && imageFile) {
+      const fd = new FormData();
+      Object.entries(formData).forEach(([k, v]) => {
+        if (k === '_id' || k === '__v' || v === undefined || v === null) return;
+        if (typeof v === 'object') return; // ignore nested
+        fd.append(k, String(v));
+      });
+      fd.append(resource === 'vehicle' ? 'image' : 'coverImage', imageFile);
+      onUpdate(resource, item._id, fd);
+    } else {
+      // Pas de nouvelle image : envoyer le json
+      const payload = { ...formData };
+      // Convertir le prix véhicule en number ou null
+      if (resource === 'vehicle' && 'price' in payload) {
+        payload.price = payload.price === '' || payload.price == null
+          ? null
+          : Number(payload.price);
       }
+      onUpdate(resource, item._id, payload);
     }
   };
 
@@ -1330,7 +1366,7 @@ function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin }) {
           <div className="space-y-2 text-sm">
             <p><strong className="text-muted">Nom :</strong> <span className="text-cream">{item.name}</span></p>
             <p><strong className="text-muted">Description :</strong> <span className="text-cream">{item.description}</span></p>
-            <p><strong className="text-muted">Prix :</strong> <span className="text-gold">{item.price} €</span></p>
+            <p><strong className="text-muted">Prix :</strong> {formatPrice(item.price)}</p>
             <p><strong className="text-muted">Capacité :</strong> <span className="text-cream">{item.capacity} personnes</span></p>
             {item.image && (
               <img
@@ -1386,7 +1422,7 @@ function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin }) {
             <p><strong className="text-muted">Trajet :</strong> <span className="text-cream">{item.from} → {item.to}</span></p>
             <p><strong className="text-muted">Date :</strong> <span className="text-cream">{new Date(item.departureDate).toLocaleDateString('fr-FR')}</span></p>
             <p><strong className="text-muted">Véhicule :</strong> <span className="text-cream">{item.vehicle?.name || '-'}</span></p>
-            <p><strong className="text-muted">Prix :</strong> <span className="text-gold">{item.totalPrice ?? item.total} €</span></p>
+            <p><strong className="text-muted">Prix :</strong> {formatPrice(item.totalPrice ?? item.total)}</p>
             <p><strong className="text-muted">Statut :</strong> <span className={`text-xs border px-2 py-1 ml-1 ${STATUS_STYLES[item.status]}`}>{STATUS_LABELS[item.status]}</span></p>
           </div>
         );
@@ -1401,7 +1437,7 @@ function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin }) {
             <p><strong className="text-muted">Excursion :</strong> <span className="text-cream">{item.excursion?.name}</span></p>
             <p><strong className="text-muted">Date :</strong> <span className="text-cream">{new Date(item.departureDate).toLocaleDateString('fr-FR')}</span></p>
             <p><strong className="text-muted">Participants :</strong> <span className="text-cream">{item.passengers?.adults || 0} adultes</span></p>
-            <p><strong className="text-muted">Prix :</strong> <span className="text-gold">{item.totalPrice ?? item.total} €</span></p>
+            <p><strong className="text-muted">Prix :</strong> {formatPrice(item.totalPrice ?? item.total)}</p>
             <p><strong className="text-muted">Statut :</strong> <span className={`text-xs border px-2 py-1 ml-1 ${STATUS_STYLES[item.status]}`}>{STATUS_LABELS[item.status]}</span></p>
           </div>
         );
@@ -1433,37 +1469,71 @@ function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin }) {
           </div>
         </form>
       );
-    } else if (resource === 'vehicle') {
+    }
+
+    if (resource === 'vehicle') {
       return (
-        <form onSubmit={handleSubmit}>
-          {[['name', 'Nom', 'text'], ['description', 'Description', 'text'], ['price', 'Prix (€)', 'number'], ['capacity', 'Capacité', 'number']].map(([name, label, type]) => (
-            <div className="mb-4" key={name}>
-              <label className="block text-sm text-muted mb-1">{label}</label>
-              {name === 'description'
-                ? <textarea name={name} value={formData[name] || ''} onChange={handleChange} className="w-full bg-dark-3 border border-white/5 rounded px-3 py-2 text-cream" rows="3" />
-                : <input type={type} name={name} value={formData[name] || ''} onChange={handleChange} className="w-full bg-dark-3 border border-white/5 rounded px-3 py-2 text-cream" />
-              }
-            </div>
-          ))}
-          <div className="flex justify-end gap-3">
-            <button type="button" onClick={onClose} className="px-4 py-2 text-muted hover:text-cream">Annuler</button>
-            <button type="submit" className="px-4 py-2 bg-gold text-dark-2 rounded">Enregistrer</button>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm text-muted mb-1">Nom</label>
+            <input type="text" name="name" value={formData.name || ''} onChange={handleChange}
+              className="w-full bg-dark-3 border border-white/5 rounded px-3 py-2 text-cream" />
           </div>
-        </form>
-      );
-    } else if (resource === 'excursion') {
-      return (
-        <form onSubmit={handleSubmit}>
-          {[['name', 'Nom'], ['destination', 'Destination'], ['duration', 'Durée']].map(([name, label]) => (
-            <div className="mb-4" key={name}>
-              <label className="block text-sm text-muted mb-1">{label}</label>
-              <input type="text" name={name} value={formData[name] || ''} onChange={handleChange} className="w-full bg-dark-3 border border-white/5 rounded px-3 py-2 text-cream" />
-            </div>
-          ))}
-          <div className="mb-4">
-            <label className="block text-sm text-muted mb-1">Prix par personne (€)</label>
-            <input type="number" name="pricePerPerson" value={formData.pricePerPerson || ''} onChange={handleChange} className="w-full bg-dark-3 border border-white/5 rounded px-3 py-2 text-cream" />
+          <div>
+            <label className="block text-sm text-muted mb-1">Description</label>
+            <textarea name="description" value={formData.description || ''} onChange={handleChange} rows="3"
+              className="w-full bg-dark-3 border border-white/5 rounded px-3 py-2 text-cream" />
           </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm text-muted mb-1">Prix (€) — vide = sur demande</label>
+              <input type="number" min="0" name="price" value={formData.price ?? ''} onChange={handleChange}
+                placeholder="Sur demande"
+                className="w-full bg-dark-3 border border-white/5 rounded px-3 py-2 text-cream" />
+            </div>
+            <div>
+              <label className="block text-sm text-muted mb-1">Capacité</label>
+              <input type="number" min="0" name="capacity" value={formData.capacity || ''} onChange={handleChange}
+                className="w-full bg-dark-3 border border-white/5 rounded px-3 py-2 text-cream" />
+            </div>
+          </div>
+
+          {/* Image */}
+          <div>
+            <label className="block text-sm text-muted mb-1">Image</label>
+            <div className="flex items-center gap-4">
+              <label className="flex-1 cursor-pointer">
+                <div className="w-full bg-dark-3 border border-dashed border-white/20 hover:border-gold/40 rounded px-3 py-2 text-sm text-muted flex items-center gap-2 transition-colors">
+                  <FiImage size={16} className="text-gold" />
+                  <span className="truncate">
+                    {imageFile ? imageFile.name : 'Choisir une nouvelle image…'}
+                  </span>
+                </div>
+                <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+              </label>
+              {(imagePreview || formData.image) && (
+                <div className="relative">
+                  <img
+                    src={imagePreview || getImageUrl(formData.image)}
+                    alt="aperçu"
+                    className="h-16 w-16 object-cover rounded border border-white/10"
+                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                  />
+                  {imagePreview && (
+                    <button
+                      type="button"
+                      onClick={() => { setImageFile(null); setImagePreview(null); }}
+                      className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-0.5"
+                      title="Retirer"
+                    >
+                      <FiX size={12} />
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
           <div className="flex justify-end gap-3">
             <button type="button" onClick={onClose} className="px-4 py-2 text-muted hover:text-cream">Annuler</button>
             <button type="submit" className="px-4 py-2 bg-gold text-dark-2 rounded">Enregistrer</button>
@@ -1471,6 +1541,77 @@ function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin }) {
         </form>
       );
     }
+
+    if (resource === 'excursion') {
+      return (
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm text-muted mb-1">Nom</label>
+            <input type="text" name="name" value={formData.name || ''} onChange={handleChange}
+              className="w-full bg-dark-3 border border-white/5 rounded px-3 py-2 text-cream" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm text-muted mb-1">Destination</label>
+              <input type="text" name="destination" value={formData.destination || ''} onChange={handleChange}
+                className="w-full bg-dark-3 border border-white/5 rounded px-3 py-2 text-cream" />
+            </div>
+            <div>
+              <label className="block text-sm text-muted mb-1">Durée</label>
+              <input type="text" name="duration" value={formData.duration || ''} onChange={handleChange}
+                className="w-full bg-dark-3 border border-white/5 rounded px-3 py-2 text-cream" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm text-muted mb-1">Prix par personne (€)</label>
+            <input type="number" name="pricePerPerson" value={formData.pricePerPerson || ''} onChange={handleChange}
+              className="w-full bg-dark-3 border border-white/5 rounded px-3 py-2 text-cream" />
+          </div>
+
+          {/* Image */}
+          <div>
+            <label className="block text-sm text-muted mb-1">Image de couverture</label>
+            <div className="flex items-center gap-4">
+              <label className="flex-1 cursor-pointer">
+                <div className="w-full bg-dark-3 border border-dashed border-white/20 hover:border-gold/40 rounded px-3 py-2 text-sm text-muted flex items-center gap-2 transition-colors">
+                  <FiImage size={16} className="text-gold" />
+                  <span className="truncate">
+                    {imageFile ? imageFile.name : 'Choisir une nouvelle image…'}
+                  </span>
+                </div>
+                <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+              </label>
+              {(imagePreview || formData.coverImage) && (
+                <div className="relative">
+                  <img
+                    src={imagePreview || getImageUrl(formData.coverImage)}
+                    alt="aperçu"
+                    className="h-16 w-16 object-cover rounded border border-white/10"
+                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                  />
+                  {imagePreview && (
+                    <button
+                      type="button"
+                      onClick={() => { setImageFile(null); setImagePreview(null); }}
+                      className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-0.5"
+                      title="Retirer"
+                    >
+                      <FiX size={12} />
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3">
+            <button type="button" onClick={onClose} className="px-4 py-2 text-muted hover:text-cream">Annuler</button>
+            <button type="submit" className="px-4 py-2 bg-gold text-dark-2 rounded">Enregistrer</button>
+          </div>
+        </form>
+      );
+    }
+
     return <p className="text-muted text-sm">Édition non disponible pour cette ressource.</p>;
   };
 
@@ -1493,7 +1634,7 @@ function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin }) {
 }
 
 // ------------------------------------------------------------------
-// Modal de CRÉATION (Véhicule / Excursion)
+// Modal de CRÉATION (Véhicule / Excursion) — Upload depuis l'appareil
 // ------------------------------------------------------------------
 function CreateResourceModal({ resource, onClose, onCreated }) {
   const isVehicle = resource === 'vehicle';
@@ -1503,9 +1644,8 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
       ? {
           name: '',
           description: '',
-          price: '',
+          price: '',          // optionnel → sur demande
           capacity: '',
-          image: '',
         }
       : {
           name: '',
@@ -1518,17 +1658,34 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
           pricePerPerson: '',
           maxCapacity: 10,
           minPersons: 1,
-          coverImage: '',
           isFeatured: false,
         }
   );
 
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setForm((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) { setImageFile(null); setImagePreview(null); return; }
+    if (!file.type.startsWith('image/')) {
+      setError('Veuillez sélectionner un fichier image.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError("L'image ne doit pas dépasser 5 Mo.");
+      return;
+    }
+    setError('');
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
   };
 
   const handleSubmit = async (e) => {
@@ -1547,36 +1704,45 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
 
     setSubmitting(true);
     try {
-      let payload;
-      if (isVehicle) {
-        payload = {
-          name: form.name.trim(),
-          description: form.description.trim(),
-          price: Number(form.price) || 0,
-          capacity: Number(form.capacity) || 0,
-          image: form.image.trim() || undefined,
-        };
-      } else {
-        payload = {
-          name: form.name.trim(),
-          shortDesc: form.shortDesc.trim() || undefined,
-          description: form.description.trim(),
-          destination: form.destination.trim(),
-          duration: form.duration.trim(),
-          category: form.category,
-          badge: form.badge.trim() || undefined,
-          pricePerPerson: Number(form.pricePerPerson),
-          maxCapacity: Number(form.maxCapacity) || 10,
-          minPersons: Number(form.minPersons) || 1,
-          coverImage: form.coverImage.trim() || undefined,
-          isFeatured: form.isFeatured,
-          isActive: true,
-        };
-      }
+      let res;
 
-      const res = isVehicle
-        ? await vehicleAPI.create(payload)
-        : await excursionAPI.create(payload);
+      if (isVehicle) {
+        const fd = new FormData();
+        fd.append('name', form.name.trim());
+        fd.append('description', form.description.trim());
+        fd.append('capacity', form.capacity || '0');
+
+        // Prix optionnel : si vide → pas envoyé (backend met null)
+        if (form.price !== '' && Number(form.price) > 0) {
+          fd.append('price', String(Number(form.price)));
+        }
+
+        if (imageFile) {
+          fd.append('image', imageFile);
+        }
+
+        res = await vehicleAPI.create(fd);
+      } else {
+        // Excursion : FormData aussi (pour envoyer l'image)
+        const fd = new FormData();
+        fd.append('name', form.name.trim());
+        if (form.shortDesc.trim()) fd.append('shortDesc', form.shortDesc.trim());
+        fd.append('description', form.description.trim());
+        fd.append('destination', form.destination.trim());
+        fd.append('duration', form.duration.trim());
+        fd.append('category', form.category);
+        if (form.badge.trim()) fd.append('badge', form.badge.trim());
+        fd.append('pricePerPerson', String(Number(form.pricePerPerson)));
+        fd.append('maxCapacity', String(Number(form.maxCapacity) || 10));
+        fd.append('minPersons', String(Number(form.minPersons) || 1));
+        fd.append('isFeatured', String(form.isFeatured));
+        fd.append('isActive', 'true');
+        if (imageFile) {
+          fd.append('coverImage', imageFile);
+        }
+
+        res = await excursionAPI.create(fd);
+      }
 
       if (res.data?.success || res.status === 201 || res.status === 200) {
         onCreated && onCreated();
@@ -1602,7 +1768,6 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
         className="bg-dark-2 border border-white/10 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="sticky top-0 bg-dark-2 border-b border-white/5 p-6 flex items-center justify-between z-10">
           <h2 className="text-xl font-serif text-cream flex items-center gap-2">
             {isVehicle ? <FiTruck className="text-gold" /> : <FiMap className="text-gold" />}
@@ -1613,7 +1778,6 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
           </button>
         </div>
 
-        {/* Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
           {error && (
             <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-400 rounded text-sm">
@@ -1622,7 +1786,6 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
           )}
 
           {isVehicle ? (
-            /* ---------- FORMULAIRE VÉHICULE ---------- */
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="md:col-span-2">
@@ -1640,11 +1803,17 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] uppercase tracking-wider text-muted mb-1">Prix (€)</label>
+                  <label className="block text-[10px] uppercase tracking-wider text-muted mb-1">
+                    Prix (€) <span className="text-muted/60 normal-case">— optionnel</span>
+                  </label>
                   <input
                     type="number" min="0" name="price" value={form.price} onChange={handleChange}
-                    className="w-full bg-dark-3 border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40"
+                    placeholder="Laisser vide = sur demande"
+                    className="w-full bg-dark-3 border border-white/10 rounded px-3 py-2 text-sm text-cream placeholder-muted/40 focus:outline-none focus:border-gold/40"
                   />
+                  <p className="text-muted text-[10px] mt-1">
+                    Vide → affiché comme <span className="text-gold">« Prix sur demande »</span>
+                  </p>
                 </div>
                 <div>
                   <label className="block text-[10px] uppercase tracking-wider text-muted mb-1">Capacité (pers.)</label>
@@ -1653,21 +1822,43 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
                     className="w-full bg-dark-3 border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40"
                   />
                 </div>
+
+                {/* Upload image depuis l'appareil */}
                 <div className="md:col-span-2">
-                  <label className="block text-[10px] uppercase tracking-wider text-muted mb-1">Image (nom du fichier)</label>
-                  <input
-                    type="text" name="image" value={form.image} onChange={handleChange}
-                    placeholder="Ex: van.jpg"
-                    className="w-full bg-dark-3 border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40"
-                  />
-                  <p className="text-muted text-[10px] mt-1">
-                    Le fichier doit être dans <code className="text-gold">backend/images/</code>
-                  </p>
+                  <label className="block text-[10px] uppercase tracking-wider text-muted mb-1">Image</label>
+                  <div className="flex items-center gap-4">
+                    <label className="flex-1 cursor-pointer">
+                      <div className="w-full bg-dark-3 border border-dashed border-white/20 hover:border-gold/40 rounded px-3 py-3 text-sm text-muted flex items-center gap-2 transition-colors">
+                        <FiImage size={16} className="text-gold" />
+                        <span className="truncate">
+                          {imageFile ? imageFile.name : 'Choisir une image depuis l’appareil…'}
+                        </span>
+                      </div>
+                      <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+                    </label>
+                    {imagePreview && (
+                      <div className="relative">
+                        <img
+                          src={imagePreview}
+                          alt="aperçu"
+                          className="h-16 w-16 object-cover rounded border border-white/10"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => { setImageFile(null); setImagePreview(null); }}
+                          className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-0.5"
+                          title="Retirer"
+                        >
+                          <FiX size={12} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-muted text-[10px] mt-1">JPG, PNG, WEBP — max 5 Mo</p>
                 </div>
               </div>
             </>
           ) : (
-            /* ---------- FORMULAIRE EXCURSION ---------- */
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="md:col-span-2">
@@ -1742,17 +1933,36 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
                     className="w-full bg-dark-3 border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40"
                   />
                 </div>
+
+                {/* Upload image excursion */}
                 <div className="md:col-span-2">
-                  <label className="block text-[10px] uppercase tracking-wider text-muted mb-1">Image de couverture (nom du fichier)</label>
-                  <input
-                    type="text" name="coverImage" value={form.coverImage} onChange={handleChange}
-                    placeholder="Ex: sidibou.jpg"
-                    className="w-full bg-dark-3 border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40"
-                  />
-                  <p className="text-muted text-[10px] mt-1">
-                    Le fichier doit être dans <code className="text-gold">backend/images/</code>
-                  </p>
+                  <label className="block text-[10px] uppercase tracking-wider text-muted mb-1">Image de couverture</label>
+                  <div className="flex items-center gap-4">
+                    <label className="flex-1 cursor-pointer">
+                      <div className="w-full bg-dark-3 border border-dashed border-white/20 hover:border-gold/40 rounded px-3 py-3 text-sm text-muted flex items-center gap-2 transition-colors">
+                        <FiImage size={16} className="text-gold" />
+                        <span className="truncate">
+                          {imageFile ? imageFile.name : 'Choisir une image depuis l’appareil…'}
+                        </span>
+                      </div>
+                      <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+                    </label>
+                    {imagePreview && (
+                      <div className="relative">
+                        <img src={imagePreview} alt="aperçu" className="h-16 w-16 object-cover rounded border border-white/10" />
+                        <button
+                          type="button"
+                          onClick={() => { setImageFile(null); setImagePreview(null); }}
+                          className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-0.5"
+                        >
+                          <FiX size={12} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-muted text-[10px] mt-1">JPG, PNG, WEBP — max 5 Mo</p>
                 </div>
+
                 <div className="md:col-span-2 flex items-center gap-2">
                   <input
                     type="checkbox" name="isFeatured" id="isFeatured"
@@ -1767,7 +1977,6 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
             </>
           )}
 
-          {/* Footer */}
           <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
             <button
               type="button"

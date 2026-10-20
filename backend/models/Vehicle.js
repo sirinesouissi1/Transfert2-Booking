@@ -5,7 +5,8 @@ const vehicleSchema = new mongoose.Schema({
   capacity:    { type: Number, required: true },
   features:    [{ type: String }],
   description: { type: String },
-  image:       { type: String }, // This will store the image path/filename
+  image:       { type: String }, // data URL (base64) ou nom de fichier local
+  price:       { type: Number, default: null }, // null = prix sur demande
   isActive:    { type: Boolean, default: true }
 }, { timestamps: true });
 

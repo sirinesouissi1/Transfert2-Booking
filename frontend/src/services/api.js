@@ -65,9 +65,27 @@ export const transferAPI = {
 // ─── Véhicules ────────────────────────────────────────────────────────────────
 export const vehicleAPI = {
   getAll: () => api.get('/vehicles'),
-  getById: (id) => api.get(`/vehicles/${id}`),
-  create: (data) => api.post('/vehicles', data),
-  update: (id, data) => api.put(`/vehicles/${id}`, data),
+  getOne: (id) => api.get(`/vehicles/${id}`),
+
+  // Accepte un FormData OU un objet simple
+  create: (payload) => {
+    const isFormData = payload instanceof FormData;
+    return api.post('/vehicles', payload, {
+      headers: isFormData
+        ? { 'Content-Type': 'multipart/form-data' }
+        : { 'Content-Type': 'application/json' },
+    });
+  },
+
+  update: (id, payload) => {
+    const isFormData = payload instanceof FormData;
+    return api.put(`/vehicles/${id}`, payload, {
+      headers: isFormData
+        ? { 'Content-Type': 'multipart/form-data' }
+        : { 'Content-Type': 'application/json' },
+    });
+  },
+
   delete: (id) => api.delete(`/vehicles/${id}`),
 };
 
