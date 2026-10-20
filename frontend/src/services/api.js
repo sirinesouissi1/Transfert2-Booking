@@ -2,7 +2,8 @@ import axios from 'axios';
 
 const api = axios.create({
   baseURL: '/api',
-  headers: { 'Content-Type': 'application/json' },
+  // ⚠️ NE PAS définir 'Content-Type' ici :
+  // axios choisit automatiquement application/json ou multipart/form-data
 });
 
 // Attacher automatiquement le token JWT
@@ -34,22 +35,21 @@ export const authAPI = {
 };
 
 // ─── Excursions (réservations d'excursions) ───────────────────────────────────
-// Dans api.js
 export const excursionBookingAPI = {
-  getAll: () => api.get('/excursion-bookings'),  // endpoint admin
-  getOne: (id) => api.get(`/excursion-bookings/${id}`),
-  create: (data) => api.post('/excursion-bookings', data),
+  getAll:       ()         => api.get('/excursion-bookings'),
+  getOne:       (id)       => api.get(`/excursion-bookings/${id}`),
+  create:       (data)     => api.post('/excursion-bookings', data),
   updateStatus: (id, data) => api.put(`/excursion-bookings/${id}/status`, data),
 };
 
 // ─── Excursions (catalogue) ───────────────────────────────────────────────────
 export const excursionAPI = {
-  getAll: (params) => api.get('/excursions', { params }),
-  getOne: (id)     => api.get(`/excursions/${id}`),
-  create: (data)   => api.post('/excursions', data),
+  getAll: (params)   => api.get('/excursions', { params }),
+  getOne: (id)       => api.get(`/excursions/${id}`),
+  create: (data)     => api.post('/excursions', data),
   update: (id, data) => api.put(`/excursions/${id}`, data),
-  delete: (id)     => api.delete(`/excursions/${id}`),  // alias remove
-  remove: (id)     => api.delete(`/excursions/${id}`),  // pour compatibilité
+  delete: (id)       => api.delete(`/excursions/${id}`),
+  remove: (id)       => api.delete(`/excursions/${id}`),
 };
 
 // ─── Transfers (catalogue) ────────────────────────────────────────────────────
@@ -64,38 +64,22 @@ export const transferAPI = {
 
 // ─── Véhicules ────────────────────────────────────────────────────────────────
 export const vehicleAPI = {
-  getAll: () => api.get('/vehicles'),
+  getAll: ()   => api.get('/vehicles'),
   getOne: (id) => api.get(`/vehicles/${id}`),
 
-  // Accepte un FormData OU un objet simple
-  create: (payload) => {
-    const isFormData = payload instanceof FormData;
-    return api.post('/vehicles', payload, {
-      headers: isFormData
-        ? { 'Content-Type': 'multipart/form-data' }
-        : { 'Content-Type': 'application/json' },
-    });
-  },
-
-  update: (id, payload) => {
-    const isFormData = payload instanceof FormData;
-    return api.put(`/vehicles/${id}`, payload, {
-      headers: isFormData
-        ? { 'Content-Type': 'multipart/form-data' }
-        : { 'Content-Type': 'application/json' },
-    });
-  },
-
+  // ✅ Laisser axios gérer le Content-Type automatiquement
+  create: (payload) => api.post('/vehicles', payload),
+  update: (id, payload) => api.put(`/vehicles/${id}`, payload),
   delete: (id) => api.delete(`/vehicles/${id}`),
 };
 
 // ─── Réservations (transferts et excursions) ──────────────────────────────────
 export const bookingAPI = {
-  create:       (data) => api.post('/bookings', data),
-  getMy:        ()     => api.get('/bookings'),
-  getOne:       (id)   => api.get(`/bookings/${id}`),
-  cancel:       (id)   => api.put(`/bookings/${id}/cancel`),
-  getAll:       (params) => api.get('/bookings', { params }),
+  create:       (data)     => api.post('/bookings', data),
+  getMy:        ()         => api.get('/bookings'),
+  getOne:       (id)       => api.get(`/bookings/${id}`),
+  cancel:       (id)       => api.put(`/bookings/${id}/cancel`),
+  getAll:       (params)   => api.get('/bookings', { params }),
   updateStatus: (id, data) => api.put(`/bookings/${id}/status`, data),
 };
 
@@ -106,11 +90,10 @@ export const reviewAPI = {
   approve:         (id)   => api.put(`/reviews/${id}/approve`),
 };
 
-// ─── Admin (statistiques, utilisateurs) ───────────────────────────────────────
+// ─── Admin ────────────────────────────────────────────────────────────────────
 export const adminAPI = {
   getStats: () => api.get('/admin/stats'),
   getUsers: () => api.get('/users'),
 };
 
-// Export par défaut pour utilisation directe si besoin
 export default api;

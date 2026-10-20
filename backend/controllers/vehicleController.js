@@ -1,4 +1,5 @@
 const asyncHandler = require('express-async-handler');
+const mongoose = require('mongoose');
 const Vehicle = require('../models/Vehicle');
 
 // Convertit le fichier reçu par multer en valeur à stocker dans MongoDB
@@ -19,6 +20,10 @@ exports.getVehicles = asyncHandler(async (req, res) => {
 // @route  GET /api/vehicles/:id
 // @access Public
 exports.getVehicle = asyncHandler(async (req, res) => {
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    res.status(400);
+    throw new Error('ID de véhicule invalide');
+  }
   const vehicle = await Vehicle.findOne({ _id: req.params.id, isActive: true });
   if (!vehicle) {
     res.status(404);
@@ -31,11 +36,27 @@ exports.getVehicle = asyncHandler(async (req, res) => {
 // @route  POST /api/vehicles
 // @access Private/Admin
 exports.createVehicle = asyncHandler(async (req, res) => {
+  // 🔍 DEBUG TEMPORAIRE — à retirer une fois que ça marche
+  console.log('=== POST /api/vehicles ===');
+  console.log('Content-Type:', req.headers['content-type']);
+  console.log('req.body:', req.body);
+  console.log('req.file:', req.file ? req.file.originalname : null);
+
   const { name, description, capacity, price } = req.body;
 
+  // ✅ Validation explicite avec messages clairs
+  if (!name || !String(name).trim()) {
+    res.status(400);
+    throw new Error('Le nom du véhicule est requis');
+  }
+  if (capacity === undefined || capacity === null || capacity === '' || isNaN(Number(capacity))) {
+    res.status(400);
+    throw new Error('La capacité est requise et doit être un nombre');
+  }
+
   const data = {
-    name,
-    description,
+    name: String(name).trim(),
+    description: description ? String(description).trim() : '',
     capacity: Number(capacity),
   };
 
@@ -56,16 +77,41 @@ exports.createVehicle = asyncHandler(async (req, res) => {
 // @route  PUT /api/vehicles/:id
 // @access Private/Admin
 exports.updateVehicle = asyncHandler(async (req, res) => {
-  const data = { ...req.body };
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    res.status(400);
+    throw new Error('ID de véhicule invalide');
+  }
 
-  if (data.capacity !== undefined) data.capacity = Number(data.capacity);
+  // ✅ On ne garde QUE les champs éditables (évite _id, __v, createdAt, etc.)
+  const allowed = ['name', 'description', 'capacity', 'price', 'features', 'isActive'];
+  const data = {};
+  allowed.forEach((field) => {
+    if (req.body[field] !== undefined) data[field] = req.body[field];
+  });
 
-  // Prix optionnel
+  if (data.name !== undefined) data.name = String(data.name).trim();
+
+  if (data.capacity !== undefined) {
+    if (data.capacity === '' || isNaN(Number(data.capacity))) {
+      res.status(400);
+      throw new Error('La capacité doit être un nombre');
+    }
+    data.capacity = Number(data.capacity);
+  }
+
+  // Prix optionnel : vide / null / <= 0 → null (= "sur demande")
   if (data.price !== undefined) {
     if (data.price === '' || data.price === null || isNaN(Number(data.price)) || Number(data.price) <= 0) {
       data.price = null;
     } else {
       data.price = Number(data.price);
+    }
+  }
+
+  // features peut arriver en string ("A,B,C") ou array
+  if (data.features !== undefined) {
+    if (typeof data.features === 'string') {
+      data.features = data.features.split(',').map((f) => f.trim()).filter(Boolean);
     }
   }
 
@@ -87,6 +133,10 @@ exports.updateVehicle = asyncHandler(async (req, res) => {
 // @route  DELETE /api/vehicles/:id
 // @access Private/Admin
 exports.deleteVehicle = asyncHandler(async (req, res) => {
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    res.status(400);
+    throw new Error('ID de véhicule invalide');
+  }
   const vehicle = await Vehicle.findByIdAndUpdate(req.params.id, { isActive: false });
   if (!vehicle) {
     res.status(404);
