@@ -1,7 +1,14 @@
 import axios from 'axios';
 
+// ✅ URL absolue vers le backend Render.
+// En prod : https://go-taxi-api.onrender.com/api
+// En dev  : http://localhost:5002/api  (grâce à .env.development)
+// ⚠️ On peut override via la variable d'env VITE_API_URL
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL || 'https://go-taxi-api.onrender.com/api';
+
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: API_BASE_URL,
   // ⚠️ NE PAS définir 'Content-Type' ici :
   // axios choisit automatiquement application/json ou multipart/form-data
 });
@@ -67,7 +74,8 @@ export const vehicleAPI = {
   getAll: ()   => api.get('/vehicles'),
   getOne: (id) => api.get(`/vehicles/${id}`),
 
-  // ✅ Laisser axios gérer le Content-Type automatiquement
+  // ✅ Accepte indifféremment un objet JS (JSON) ou un FormData (upload image)
+  // axios détecte le type et gère le Content-Type automatiquement
   create: (payload) => api.post('/vehicles', payload),
   update: (id, payload) => api.put(`/vehicles/${id}`, payload),
   delete: (id) => api.delete(`/vehicles/${id}`),
