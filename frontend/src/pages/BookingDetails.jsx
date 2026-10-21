@@ -7,7 +7,7 @@ import {
 import toast from 'react-hot-toast';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
-
+const API_URL = (import.meta.env.VITE_API_URL || 'https://go-taxi-api.onrender.com/api').replace(/\/$/, '');
 // Liste complète et triée des préfixes de pays
 const ALL_COUNTRIES = [
     { name: "Afghanistan", code: "+93", flag: "🇦🇫" },
@@ -293,70 +293,81 @@ export default function BookingDetails() {
     return errors;
   };
 
-  const handleConfirm = async (e) => {
-    e.preventDefault();
+ const handleConfirm = async (e) => {
+  e.preventDefault();
 
-    const errors = validateForm();
-    if (errors.length > 0) {
-      toast.error(`Veuillez remplir les champs suivants : ${errors.join(', ')}`, {
-          duration: 5000,
-          style: { background: '#1A1A24', color: '#F8F5EE', border: '1px solid #C9A84C', borderRadius: '4px' },
-          iconTheme: { primary: '#ef4444', secondary: '#0A0A0F' },
-      });
-      return;
+  const errors = validateForm();
+  if (errors.length > 0) {
+    toast.error(`Veuillez remplir les champs suivants : ${errors.join(', ')}`, {
+      duration: 5000,
+      style: { background: '#1A1A24', color: '#F8F5EE', border: '1px solid #C9A84C', borderRadius: '4px' },
+      iconTheme: { primary: '#ef4444', secondary: '#0A0A0F' },
+    });
+    return;
+  }
+
+  setIsSubmitting(true);
+
+  try {
+    const departure = new Date(bookingData.departureDate);
+    if (!bookingData.departureDate || isNaN(departure.getTime())) {
+      throw new Error('Date de départ invalide. Veuillez recommencer la recherche.');
+    }
+    if (!bookingData.vehicleId) {
+      throw new Error('Véhicule manquant. Veuillez recommencer la recherche.');
     }
 
-    setIsSubmitting(true);
+    let returnDateIso = null;
+    if (bookingData.returnDate) {
+      const ret = new Date(bookingData.returnDate);
+      if (!isNaN(ret.getTime())) returnDateIso = ret.toISOString();
+    }
 
-    // Si pas de prix, on envoie 0 (le backend doit accepter)
+    // Prix absent = 0 ("sur demande")
     const finalPrice = bookingData.price ? parseFloat(bookingData.price) : 0;
 
     const bookingPayload = {
-      firstName: formData.prenom,
-      lastName: formData.nom,
-      email: formData.email,
-      phone: `${formData.prefix.code} ${formData.phone}`,
+      firstName: formData.prenom.trim(),
+      lastName: formData.nom.trim(),
+      email: formData.email.trim(),
+      phone: `${formData.prefix.code} ${formData.phone.trim()}`,
       whatsapp: formData.whatsapp,
       bookingType: 'transfer',
-      tripType: bookingData.tripType,
-      from: bookingData.from,
+      tripType: (params.get('tripType') || 'one_way').replace(/-/g, '_'),      from: bookingData.from,
       to: bookingData.to,
-      departureDate: new Date(bookingData.departureDate).toISOString(),
-      returnDate: bookingData.returnDate ? new Date(bookingData.returnDate).toISOString() : null,
+      departureDate: departure.toISOString(),
+      returnDate: returnDateIso,
       vehicle: bookingData.vehicleId,
-      totalPrice: finalPrice,
+      totalPrice: isNaN(finalPrice) ? 0 : finalPrice,
       passengers: { adults: formData.adults, children: formData.children },
       flightNumber: formData.flightNumber,
       specialRequests: formData.requests,
     };
 
-    try {
-      const response = await fetch('/api/bookings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(bookingPayload),
-      });
+    const response = await fetch(`${API_URL}/bookings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(bookingPayload),
+    });
 
-      const result = await response.json();
+    const result = await response.json().catch(() => ({}));
 
-      if (!response.ok) {
-        throw new Error(result.message || 'Erreur lors de la réservation');
-      }
-
-      if (result.success) {
-        navigate(`/confirmation?code=${result.booking.confirmationCode}`);
-      }
-    } catch (error) {
-      console.error('Erreur:', error);
-      toast.error(error.message || 'Impossible de contacter le serveur', {
-        duration: 5000,
-        style: { background: '#1A1A24', color: '#F8F5EE', border: '1px solid #C9A84C', borderRadius: '4px' },
-        iconTheme: { primary: '#ef4444', secondary: '#0A0A0F' },
-      });
-    } finally {
-      setIsSubmitting(false);
+    if (!response.ok || !result.success) {
+      throw new Error(result.message || 'Erreur lors de la réservation');
     }
-  };
+
+    navigate(`/confirmation?code=${result.booking.confirmationCode}`);
+  } catch (error) {
+    console.error('Erreur:', error);
+    toast.error(error.message || 'Impossible de contacter le serveur', {
+      duration: 5000,
+      style: { background: '#1A1A24', color: '#F8F5EE', border: '1px solid #C9A84C', borderRadius: '4px' },
+      iconTheme: { primary: '#ef4444', secondary: '#0A0A0F' },
+    });
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   return (
     <div className="bg-dark-DEFAULT min-h-screen font-sans text-cream selection:bg-gold selection:text-dark">
