@@ -2,23 +2,19 @@ const asyncHandler = require('express-async-handler');
 const mongoose = require('mongoose');
 const Vehicle = require('../models/Vehicle');
 
-// Convertit le fichier reçu par multer en valeur à stocker dans MongoDB
+// Convertit le fichier multer en valeur à stocker dans MongoDB
 const getImageValue = (file) =>
   file.buffer
     ? `data:${file.mimetype};base64,${file.buffer.toString('base64')}`
     : file.filename;
 
-// @desc   Obtenir tous les véhicules actifs
-// @route  GET /api/vehicles
-// @access Public
+// @route GET /api/vehicles
 exports.getVehicles = asyncHandler(async (req, res) => {
   const vehicles = await Vehicle.find({ isActive: true }).sort({ capacity: 1 });
   res.json({ success: true, count: vehicles.length, vehicles });
 });
 
-// @desc   Obtenir un seul véhicule par ID
-// @route  GET /api/vehicles/:id
-// @access Public
+// @route GET /api/vehicles/:id
 exports.getVehicle = asyncHandler(async (req, res) => {
   if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
     res.status(400);
@@ -32,24 +28,21 @@ exports.getVehicle = asyncHandler(async (req, res) => {
   res.json({ success: true, vehicle });
 });
 
-// @desc   Créer un véhicule (avec image optionnelle)
-// @route  POST /api/vehicles
-// @access Private/Admin
+// @route POST /api/vehicles
 exports.createVehicle = asyncHandler(async (req, res) => {
-  // 🔍 DEBUG TEMPORAIRE — à retirer une fois que ça marche
-  console.log('=== POST /api/vehicles ===');
-  console.log('Content-Type:', req.headers['content-type']);
-  console.log('req.body:', req.body);
-  console.log('req.file:', req.file ? req.file.originalname : null);
+  const body = req.body || {};
+  const { name, description, capacity, price } = body;
 
-  const { name, description, capacity, price } = req.body;
-
-  // ✅ Validation explicite avec messages clairs
   if (!name || !String(name).trim()) {
     res.status(400);
     throw new Error('Le nom du véhicule est requis');
   }
-  if (capacity === undefined || capacity === null || capacity === '' || isNaN(Number(capacity))) {
+  if (
+    capacity === undefined ||
+    capacity === null ||
+    capacity === '' ||
+    isNaN(Number(capacity))
+  ) {
     res.status(400);
     throw new Error('La capacité est requise et doit être un nombre');
   }
@@ -58,13 +51,12 @@ exports.createVehicle = asyncHandler(async (req, res) => {
     name: String(name).trim(),
     description: description ? String(description).trim() : '',
     capacity: Number(capacity),
+    price: null,
   };
 
-  // Prix optionnel : si vide ou <= 0 → null (= "sur demande")
+  // Prix optionnel : vide ou <= 0 → null ("sur demande")
   if (price !== undefined && price !== '' && !isNaN(Number(price)) && Number(price) > 0) {
     data.price = Number(price);
-  } else {
-    data.price = null;
   }
 
   if (req.file) data.image = getImageValue(req.file);
@@ -73,20 +65,18 @@ exports.createVehicle = asyncHandler(async (req, res) => {
   res.status(201).json({ success: true, vehicle });
 });
 
-// @desc   Mettre à jour un véhicule (avec nouvelle image optionnelle)
-// @route  PUT /api/vehicles/:id
-// @access Private/Admin
+// @route PUT /api/vehicles/:id
 exports.updateVehicle = asyncHandler(async (req, res) => {
   if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
     res.status(400);
     throw new Error('ID de véhicule invalide');
   }
 
-  // ✅ On ne garde QUE les champs éditables (évite _id, __v, createdAt, etc.)
+  const body = req.body || {};
   const allowed = ['name', 'description', 'capacity', 'price', 'features', 'isActive'];
   const data = {};
   allowed.forEach((field) => {
-    if (req.body[field] !== undefined) data[field] = req.body[field];
+    if (body[field] !== undefined) data[field] = body[field];
   });
 
   if (data.name !== undefined) data.name = String(data.name).trim();
@@ -99,20 +89,26 @@ exports.updateVehicle = asyncHandler(async (req, res) => {
     data.capacity = Number(data.capacity);
   }
 
-  // Prix optionnel : vide / null / <= 0 → null (= "sur demande")
   if (data.price !== undefined) {
-    if (data.price === '' || data.price === null || isNaN(Number(data.price)) || Number(data.price) <= 0) {
+    if (
+      data.price === '' ||
+      data.price === null ||
+      data.price === 'null' ||
+      isNaN(Number(data.price)) ||
+      Number(data.price) <= 0
+    ) {
       data.price = null;
     } else {
       data.price = Number(data.price);
     }
   }
 
-  // features peut arriver en string ("A,B,C") ou array
-  if (data.features !== undefined) {
-    if (typeof data.features === 'string') {
-      data.features = data.features.split(',').map((f) => f.trim()).filter(Boolean);
-    }
+  if (data.features !== undefined && typeof data.features === 'string') {
+    data.features = data.features.split(',').map((f) => f.trim()).filter(Boolean);
+  }
+
+  if (data.isActive !== undefined && typeof data.isActive === 'string') {
+    data.isActive = data.isActive === 'true';
   }
 
   if (req.file) data.image = getImageValue(req.file);
@@ -129,9 +125,7 @@ exports.updateVehicle = asyncHandler(async (req, res) => {
   res.json({ success: true, vehicle });
 });
 
-// @desc   Désactiver/Supprimer un véhicule (Soft Delete)
-// @route  DELETE /api/vehicles/:id
-// @access Private/Admin
+// @route DELETE /api/vehicles/:id  (soft delete)
 exports.deleteVehicle = asyncHandler(async (req, res) => {
   if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
     res.status(400);

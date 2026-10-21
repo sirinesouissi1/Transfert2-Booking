@@ -15,8 +15,9 @@ const api = axios.create({
 
 // Attacher automatiquement le token JWT
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('lumina_token');
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+  if (config.data instanceof FormData) {
+    delete config.headers['Content-Type']; // le navigateur met multipart + boundary
+  }
   return config;
 });
 

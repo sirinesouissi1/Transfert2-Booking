@@ -32,6 +32,9 @@ import {
   FiImage,
 } from 'react-icons/fi';
 
+// URL de l'API (backend Render). Sans cette base, les fetch('/api/...') partent vers le domaine du frontend.
+const API_URL = (import.meta.env.VITE_API_URL || 'https://go-taxi-api.onrender.com/api').replace(/\/$/, '');
+
 const STATUS_STYLES = {
   pending: 'text-yellow-400 border-yellow-400/30 bg-yellow-400/5',
   confirmed: 'text-green-400 border-green-400/30 bg-green-400/5',
@@ -232,7 +235,7 @@ export default function Dashboard() {
       }
       fetchData();
     } catch (err) {
-      setError(`Erreur lors de la suppression : ${err.message}`);
+      setError(`Erreur lors de la suppression : ${err.response?.data?.message || err.message}`);
     }
   };
 
@@ -250,7 +253,7 @@ export default function Dashboard() {
       fetchData();
       closeModal();
     } catch (err) {
-      setError(`Erreur lors de la mise à jour : ${err.message}`);
+      setError(`Erreur lors de la mise à jour : ${err.response?.data?.message || err.message}`);
     }
   };
 
@@ -746,7 +749,7 @@ function VehicleDestinationPricing({ vehicle, isAdmin, onBack }) {
   const fetchPrices = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/prices?vehicleId=${vehicle._id}`);
+      const res = await fetch(`${API_URL}/prices?vehicleId=${vehicle._id}`);
       const data = await res.json();
       const vehiclePrices = (data.prices || []).filter(
         (p) => (p.vehicle?._id || p.vehicle) === vehicle._id
@@ -780,7 +783,7 @@ function VehicleDestinationPricing({ vehicle, isAdmin, onBack }) {
     }
     setAddError('');
     try {
-      const res = await fetch('/api/prices', {
+      const res = await fetch(`${API_URL}/prices`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -814,7 +817,7 @@ function VehicleDestinationPricing({ vehicle, isAdmin, onBack }) {
   const saveEdit = async (id) => {
     if (!editForm.from.trim() || !editForm.to.trim() || !editForm.price) return;
     try {
-      await fetch(`/api/prices/${id}`, {
+      await fetch(`${API_URL}/prices/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -835,7 +838,7 @@ function VehicleDestinationPricing({ vehicle, isAdmin, onBack }) {
   const handleDelete = async (id) => {
     if (!window.confirm('Supprimer ce tarif ?')) return;
     try {
-      await fetch(`/api/prices/${id}`, { method: 'DELETE' });
+      await fetch(`${API_URL}/prices/${id}`, { method: 'DELETE' });
       await fetchPrices();
       showSuccess('Tarif supprimé.');
     } catch (err) {
@@ -1340,15 +1343,21 @@ function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin }) {
     if ((resource === 'vehicle' || resource === 'excursion') && imageFile) {
       const fd = new FormData();
       Object.entries(formData).forEach(([k, v]) => {
-        if (k === '_id' || k === '__v' || v === undefined || v === null) return;
+        if (k === '_id' || k === '__v' || k === 'image' || k === 'coverImage') return;
+        if (k === 'createdAt' || k === 'updatedAt') return;
+        if (v === undefined || v === null) return;
         if (typeof v === 'object') return; // ignore nested
         fd.append(k, String(v));
       });
       fd.append(resource === 'vehicle' ? 'image' : 'coverImage', imageFile);
       onUpdate(resource, item._id, fd);
     } else {
-      // Pas de nouvelle image : envoyer le json
+      // Pas de nouvelle image : envoyer le json (sans l'ancienne image base64)
       const payload = { ...formData };
+      delete payload.image;
+      delete payload.coverImage;
+      delete payload.createdAt;
+      delete payload.updatedAt;
       // Convertir le prix véhicule en number ou null
       if (resource === 'vehicle' && 'price' in payload) {
         payload.price = payload.price === '' || payload.price == null
@@ -1696,6 +1705,9 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
       if (!form.name || !form.description) {
         return setError('Le nom et la description sont obligatoires.');
       }
+      if (form.capacity === '' || isNaN(Number(form.capacity))) {
+        return setError('La capacité est obligatoire (nombre).');
+      }
     } else {
       if (!form.name || !form.description || !form.destination || !form.duration || !form.pricePerPerson) {
         return setError('Veuillez remplir tous les champs obligatoires (*).');
@@ -1710,7 +1722,7 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
         const fd = new FormData();
         fd.append('name', form.name.trim());
         fd.append('description', form.description.trim());
-        fd.append('capacity', form.capacity || '0');
+        fd.append('capacity', String(Number(form.capacity)));
 
         // Prix optionnel : si vide → pas envoyé (backend met null)
         if (form.price !== '' && Number(form.price) > 0) {
@@ -1816,7 +1828,7 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
                   </p>
                 </div>
                 <div>
-                  <label className="block text-[10px] uppercase tracking-wider text-muted mb-1">Capacité (pers.)</label>
+                  <label className="block text-[10px] uppercase tracking-wider text-muted mb-1">Capacité (pers.) *</label>
                   <input
                     type="number" min="0" name="capacity" value={form.capacity} onChange={handleChange}
                     className="w-full bg-dark-3 border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40"

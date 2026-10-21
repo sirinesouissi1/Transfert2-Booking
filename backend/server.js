@@ -17,6 +17,8 @@ const allowedOrigins = [
   'https://www.go-taxi-tunisie.com',
   'https://go-taxi-tunisie.com',
   'http://localhost:5173',
+  'http://localhost:5174', // Vite prend 5174 quand 5173 est occupé
+  'http://localhost:5175',
   'http://localhost:3000',
   'http://localhost:4173',
 ];
@@ -54,26 +56,27 @@ if (process.env.NODE_ENV === 'development') app.use(morgan('dev'));
 // Le dossier "images" est exposé à l'URL /uploads
 app.use('/uploads', express.static(path.join(__dirname, 'images')));
 
-// ─── Routes ────────────────────────────────────────────────────
-app.use('/api/auth',         require('./routes/authRoutes'));
-app.use('/api/users',        require('./routes/userRoutes'));
-app.use('/api/transfers',    require('./routes/transferRoutes'));
-app.use('/api/excursions',   require('./routes/excursionRoutes'));
-app.use('/api/bookings',     require('./routes/bookingRoutes'));
-app.use('/api/reviews',      require('./routes/reviewRoutes'));
-app.use('/api/payments',     require('./routes/paymentRoutes'));
-app.use('/api/admin',        require('./routes/adminRoutes'));
-app.use('/api/vehicles',     require('./routes/vehicleRoutes'));
-app.use('/api/prices',       require('./routes/priceRoutes'));
-app.use('/api/excursion-bookings', require('./routes/excursionBookingRoutes'));
-
 // ─── Health check ──────────────────────────────────────────────
 app.get('/api/health', (req, res) =>
   res.json({ status: 'OK', message: 'Lumina API running' })
 );
 
+// ─── Routes ────────────────────────────────────────────────────
+app.use('/api/auth',               require('./routes/authRoutes'));
+app.use('/api/users',              require('./routes/userRoutes'));
+app.use('/api/transfers',          require('./routes/transferRoutes'));
+app.use('/api/excursions',         require('./routes/excursionRoutes'));
+app.use('/api/bookings',           require('./routes/bookingRoutes'));
+app.use('/api/reviews',            require('./routes/reviewRoutes'));
+app.use('/api/payments',           require('./routes/paymentRoutes'));
+app.use('/api/admin',              require('./routes/adminRoutes'));
+app.use('/api/vehicles',           require('./routes/vehicleRoutes'));
+app.use('/api/prices',             require('./routes/priceRoutes'));
+app.use('/api/excursion-bookings', require('./routes/excursionBookingRoutes'));
+
 // ─── 404 handler ───────────────────────────────────────────────
-app.use((req, res, next) => {
+// Placé APRÈS toutes les routes, sans stack trace dans les logs
+app.use((req, res) => {
   res.status(404).json({
     success: false,
     message: `Route non trouvée: ${req.method} ${req.originalUrl}`,
@@ -130,8 +133,19 @@ app.use((err, req, res, next) => {
     return res.status(403).json({ success: false, message: err.message });
   }
 
-  // Fallback
-  res.status(err.statusCode || err.status || 500).json({
+  // Payload JSON invalide
+  if (err.type === 'entity.parse.failed') {
+    return res.status(400).json({ success: false, message: 'JSON invalide' });
+  }
+
+  // Les contrôleurs font res.status(400); throw new Error(...) :
+  // on réutilise le code déjà posé sur la réponse s'il est >= 400
+  const status =
+    err.statusCode ||
+    err.status ||
+    (res.statusCode && res.statusCode >= 400 ? res.statusCode : 500);
+
+  res.status(status).json({
     success: false,
     message: err.message || 'Internal Server Error',
     stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,

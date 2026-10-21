@@ -4,9 +4,10 @@ const {
   getVehicle,
   createVehicle,
   updateVehicle,
-  deleteVehicle
+  deleteVehicle,
 } = require('../controllers/vehicleController');
-const upload = require('../middleware/upload');
+const uploadImage = require('../middleware/upload');
+// const { protect, admin } = require('../middleware/auth'); // décommente avec ton vrai middleware
 
 const router = express.Router();
 
@@ -14,10 +15,9 @@ const router = express.Router();
 router.get('/', getVehicles);
 router.get('/:id', getVehicle);
 
-// Routes admin
-// Le champ du formulaire doit s'appeler "image"
-router.post('/', upload.single('image'), createVehicle);
-router.put('/:id', upload.single('image'), updateVehicle);
-router.delete('/:id', deleteVehicle);
+// Routes admin (ajoute protect, admin quand ton middleware est prêt)
+router.post('/', /* protect, admin, */ uploadImage('image'), createVehicle);
+router.put('/:id', /* protect, admin, */ uploadImage('image'), updateVehicle);
+router.delete('/:id', /* protect, admin, */ deleteVehicle);
 
 module.exports = router;
