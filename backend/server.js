@@ -4,23 +4,54 @@ const cors = require('cors');
 const morgan = require('morgan');
 const dotenv = require('dotenv');
 const path = require('path');
+const multer = require('multer');
 
 dotenv.config();
 
 const app = express();
 
-// ─── Middleware ────────────────────────────────────────────────
-app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
-  credentials: true,
-}));
+// ─── CORS ──────────────────────────────────────────────────────
+// Liste des origines autorisées.
+// On ajoute CLIENT_URL si défini dans les variables d'env (Render → Environment).
+const allowedOrigins = [
+  'https://www.go-taxi-tunisie.com',
+  'https://go-taxi-tunisie.com',
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://localhost:4173',
+];
+
+if (process.env.CLIENT_URL) {
+  // CLIENT_URL peut contenir une ou plusieurs URLs séparées par des virgules
+  process.env.CLIENT_URL.split(',').forEach((url) => {
+    const trimmed = url.trim();
+    if (trimmed && !allowedOrigins.includes(trimmed)) allowedOrigins.push(trimmed);
+  });
+}
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Autorise les requêtes sans Origin (Postman, curl, mobile apps)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      console.warn(`⚠️  CORS bloqué pour l'origine: ${origin}`);
+      return callback(new Error('Non autorisé par CORS'));
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  })
+);
+
+// ─── Body parsers ──────────────────────────────────────────────
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
 if (process.env.NODE_ENV === 'development') app.use(morgan('dev'));
 
 // ─── Static files ──────────────────────────────────────────────
 // Le dossier "images" est exposé à l'URL /uploads
-// Ex: backend/images/sidibou.jpg → http://localhost:5002/uploads/sidibou.jpg
 app.use('/uploads', express.static(path.join(__dirname, 'images')));
 
 // ─── Routes ────────────────────────────────────────────────────
@@ -41,10 +72,66 @@ app.get('/api/health', (req, res) =>
   res.json({ status: 'OK', message: 'Lumina API running' })
 );
 
-// ─── Error Handler ─────────────────────────────────────────────
+// ─── 404 handler ───────────────────────────────────────────────
+app.use((req, res, next) => {
+  res.status(404).json({
+    success: false,
+    message: `Route non trouvée: ${req.method} ${req.originalUrl}`,
+  });
+});
+
+// ─── Error Handler GLOBAL ──────────────────────────────────────
+// ⚠️ DOIT être défini APRÈS toutes les routes (y compris 404)
 app.use((err, req, res, next) => {
-  const statusCode = err.statusCode || 500;
-  res.status(statusCode).json({
+  // Log complet côté serveur (visible dans Render → Logs)
+  console.error('❌ ERREUR SERVEUR:', err.message);
+  if (err.stack) console.error(err.stack);
+
+  // Erreurs multer (upload)
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({
+        success: false,
+        message: 'Image trop lourde (max 5 Mo)',
+      });
+    }
+    if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+      return res.status(400).json({
+        success: false,
+        message: `Champ de fichier inattendu: ${err.field}`,
+      });
+    }
+    return res.status(400).json({
+      success: false,
+      message: `Erreur upload: ${err.message}`,
+    });
+  }
+
+  // Erreur custom du fileFilter (format d'image)
+  if (err.message && /Format d'image|image non supporté/i.test(err.message)) {
+    return res.status(400).json({ success: false, message: err.message });
+  }
+
+  // Erreurs Mongoose : validation
+  if (err.name === 'ValidationError') {
+    return res.status(400).json({ success: false, message: err.message });
+  }
+
+  // Erreurs Mongoose : CastError (mauvais ObjectId)
+  if (err.name === 'CastError') {
+    return res.status(400).json({
+      success: false,
+      message: `Identifiant invalide pour le champ "${err.path}"`,
+    });
+  }
+
+  // Erreur CORS
+  if (err.message === 'Non autorisé par CORS') {
+    return res.status(403).json({ success: false, message: err.message });
+  }
+
+  // Fallback
+  res.status(err.statusCode || err.status || 500).json({
     success: false,
     message: err.message || 'Internal Server Error',
     stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
