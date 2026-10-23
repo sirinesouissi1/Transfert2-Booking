@@ -1,21 +1,21 @@
-require('dotenv').config();
-const nodemailer = require('nodemailer');
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
-const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 587,
-  secure: false,
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+const { sendMail } = require('./utils/emailService');
 
-transporter.sendMail({
-  from: process.env.EMAIL_USER,
-  to: process.env.ADMIN_EMAIL,
-  subject: 'Test',
-  text: 'Ceci est un test',
-})
-.then(() => console.log('✅ Email envoyé'))
-.catch(err => console.error('❌ Erreur :', err));
+(async () => {
+  console.log('EMAIL_USER =', process.env.EMAIL_USER || '❌ non défini');
+  console.log('EMAIL_PASS =', process.env.EMAIL_PASS ? '✅ défini' : '❌ non défini');
+
+  const to = process.env.ADMIN_EMAIL || process.env.EMAIL_USER;
+  try {
+    await sendMail({
+      to,
+      subject: 'Test GoTaxi',
+      html: '<p>Si tu lis ceci, l’envoi d’emails fonctionne ✅</p>',
+    });
+    console.log('✅ Email de test envoyé à', to);
+  } catch (err) {
+    console.error('❌ Échec :', err.message);
+  }
+})();

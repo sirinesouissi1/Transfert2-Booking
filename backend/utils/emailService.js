@@ -1,20 +1,60 @@
 const nodemailer = require('nodemailer');
 
 // ========================
-// Configuration du transporteur Gmail
+// Envoi d'email
+// - Si BREVO_API_KEY est défini : API HTTPS Brevo (utile si Render bloque le SMTP)
+// - Sinon : SMTP Gmail (EMAIL_USER / EMAIL_PASS)
 // ========================
-const transporter = nodemailer.createTransport({
+const smtp = nodemailer.createTransport({
   host: 'smtp.gmail.com',
   port: 587,
   secure: false,
   auth: {
     user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS, // mot de passe d'application Gmail (16 caractères)
+    pass: process.env.EMAIL_PASS, // mot de passe d'application Gmail (16 caractères, sans espaces)
   },
   connectionTimeout: 10000,
   greetingTimeout: 10000,
   socketTimeout: 15000,
 });
+
+const SENDER_NAME = 'GoTaxi';
+const getSenderEmail = () => process.env.EMAIL_FROM || process.env.EMAIL_USER;
+const getAdminEmail = () => process.env.ADMIN_EMAIL || process.env.EMAIL_USER;
+
+const sendMail = async ({ to, subject, html }) => {
+  if (!to) throw new Error('Destinataire manquant');
+
+  if (process.env.BREVO_API_KEY) {
+    const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        accept: 'application/json',
+        'api-key': process.env.BREVO_API_KEY,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        sender: { name: SENDER_NAME, email: getSenderEmail() },
+        to: [{ email: to }],
+        subject,
+        htmlContent: html,
+      }),
+    });
+    if (!res.ok) throw new Error(`Brevo ${res.status}: ${await res.text()}`);
+    return;
+  }
+
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    throw new Error('EMAIL_USER / EMAIL_PASS non définis');
+  }
+
+  await smtp.sendMail({
+    from: `"${SENDER_NAME}" <${getSenderEmail()}>`,
+    to,
+    subject,
+    html,
+  });
+};
 
 // ========================
 // Fonctions utilitaires
@@ -31,21 +71,18 @@ const formatDateOnly = (dateString) =>
   new Date(dateString).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' });
 
 // Affiche le prix, ou "Prix sur demande" s'il n'est pas défini
-// priceOnRequest (optionnel) : booléen venant du modèle si vous utilisez l'option B
-const CURRENCY = '€'; // 💰 Prix en euros
+const CURRENCY = '€';
 const PRICE_ON_REQUEST = 'Prix sur demande';
 
 const formatPrice = (price, priceOnRequest = false) => {
   if (priceOnRequest) return PRICE_ON_REQUEST;
   if (price === null || price === undefined || price === '') return PRICE_ON_REQUEST;
 
-  // Texte non numérique (ex: "Prix sur demande") : on le garde tel quel
   if (typeof price === 'string' && isNaN(Number(price))) return price;
 
   const value = Number(price);
   if (!value || value <= 0) return PRICE_ON_REQUEST;
 
-  // Affichage : "80 €" (avec un espace insécable avant le symbole pour un rendu pro)
   return `${value}\u00A0${CURRENCY}`;
 };
 
@@ -146,8 +183,7 @@ const sendBookingConfirmation = async (booking) => {
     <p style="margin-top: 20px;">À très bientôt !</p>
   `;
 
-  await transporter.sendMail({
-    from: `"GoTaxi" <${process.env.EMAIL_USER}>`,
+  await sendMail({
     to: email,
     subject: `✅ Confirmation de transfert – ${confirmationCode}`,
     html: getBaseTemplate(content, 'Merci pour votre réservation !'),
@@ -191,9 +227,8 @@ const sendAdminNotification = async (booking) => {
     </table>
   `;
 
-  await transporter.sendMail({
-    from: `"GoTaxi" <${process.env.EMAIL_USER}>`,
-    to: process.env.ADMIN_EMAIL,
+  await sendMail({
+    to: getAdminEmail(),
     subject: `🔔 Nouvelle réservation transfert – ${confirmationCode}`,
     html: getBaseTemplate(content, 'Nouvelle réservation reçue'),
   });
@@ -229,8 +264,7 @@ const sendExcursionBookingConfirmation = async (booking) => {
     <p>À bientôt !</p>
   `;
 
-  await transporter.sendMail({
-    from: `"GoTaxi" <${process.env.EMAIL_USER}>`,
+  await sendMail({
     to: email,
     subject: `✅ Confirmation excursion – ${confirmationCode}`,
     html: getBaseTemplate(content, 'Merci pour votre réservation !'),
@@ -269,15 +303,15 @@ const sendExcursionAdminNotification = async (booking) => {
     </table>
   `;
 
-  await transporter.sendMail({
-    from: `"GoTaxi" <${process.env.EMAIL_USER}>`,
-    to: process.env.ADMIN_EMAIL,
+  await sendMail({
+    to: getAdminEmail(),
     subject: `🔔 Nouvelle réservation excursion – ${confirmationCode}`,
     html: getBaseTemplate(content, 'Nouvelle réservation reçue'),
   });
 };
 
 module.exports = {
+  sendMail,
   sendBookingConfirmation,
   sendAdminNotification,
   sendExcursionBookingConfirmation,
