@@ -265,12 +265,12 @@ const isAdmin = user?.role === 'admin';
   const isActive = (view) => currentView === view;
 
   return (
-    <div className="flex h-screen bg-dark-DEFAULT text-cream">
+    <div className="flex h-screen bg-[#1F1F2E] text-cream">
       {/* Sidebar */}
-      <aside className="w-64 bg-dark-2 border-r border-white/5 flex flex-col">
-        <div className="p-6 border-b border-white/5">
+      <aside className="w-64 bg-[#2A2A3C] border-r border-white/10 flex flex-col">
+        <div className="p-6 border-b border-white/10">
           <Link to="/" className="font-serif text-2xl tracking-[4px] text-cream">
-            GO<span className="text-gold">Taxi</span>
+            GO<span className="text-gold">TAXI</span>
           </Link>
         </div>
 
@@ -353,7 +353,7 @@ const isAdmin = user?.role === 'admin';
           />
         </nav>
 
-        <div className="p-4 border-t border-white/5">
+        <div className="p-4 border-t border-white/10">
           <button
             onClick={handleLogout}
             className="flex items-center gap-3 px-3 py-2 text-sm text-muted hover:text-gold hover:bg-white/5 rounded w-full transition-colors"
@@ -366,7 +366,7 @@ const isAdmin = user?.role === 'admin';
 
       {/* Main content */}
       <main className="flex-1 overflow-y-auto">
-        <div className="sticky top-0 z-10 bg-dark-2 border-b border-white/5 px-8 py-4 flex justify-end items-center">
+        <div className="sticky top-0 z-10 bg-[#2A2A3C] border-b border-white/10 px-8 py-4 flex justify-end items-center">
           <div className="flex items-center gap-4">
             <span className="text-sm text-cream">
               <span className="text-muted">Bonjour, </span>
@@ -403,7 +403,7 @@ const isAdmin = user?.role === 'admin';
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                <div className="bg-dark-2 border border-white/5 p-6 rounded-lg">
+                <div className="bg-[#2A2A3C] border border-white/10 p-6 rounded-lg">
                   <h3 className="text-lg font-serif mb-4 text-cream">Évolution des réservations</h3>
                   {bookingsByMonth.length === 0 ? (
                     <p className="text-muted text-sm">Aucune donnée disponible</p>
@@ -413,7 +413,7 @@ const isAdmin = user?.role === 'admin';
                         <CartesianGrid strokeDasharray="3 3" stroke="#333" />
                         <XAxis dataKey="name" stroke="#aaa" tick={{ fill: '#aaa' }} />
                         <YAxis stroke="#aaa" />
-                        <Tooltip contentStyle={{ backgroundColor: '#1A1A24', borderColor: '#C9A84C', color: '#fff' }} />
+                        <Tooltip contentStyle={{ backgroundColor: '#2A2A3C', borderColor: '#C9A84C', color: '#fff' }} />
                         <Legend />
                         <Line type="monotone" dataKey="value" stroke="#C9A84C" strokeWidth={2} name="Réservations" />
                       </LineChart>
@@ -421,7 +421,7 @@ const isAdmin = user?.role === 'admin';
                   )}
                 </div>
 
-                <div className="bg-dark-2 border border-white/5 p-6 rounded-lg">
+                <div className="bg-[#2A2A3C] border border-white/10 p-6 rounded-lg">
                   <h3 className="text-lg font-serif mb-4 text-cream">Réservations par statut</h3>
                   {bookingsByStatus.every(item => item.value === 0) ? (
                     <p className="text-muted text-sm">Aucune donnée disponible</p>
@@ -441,7 +441,7 @@ const isAdmin = user?.role === 'admin';
                             <Cell key={`cell-${index}`} fill={STATUS_COLORS[entry.name] || '#C9A84C'} />
                           ))}
                         </Pie>
-                        <Tooltip contentStyle={{ backgroundColor: '#1A1A24', borderColor: '#C9A84C' }} />
+                        <Tooltip contentStyle={{ backgroundColor: '#2A2A3C', borderColor: '#C9A84C' }} />
                         <Legend />
                       </PieChart>
                     </ResponsiveContainer>
@@ -450,7 +450,7 @@ const isAdmin = user?.role === 'admin';
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                <div className="bg-dark-2 border border-white/5 p-6 rounded-lg">
+                <div className="bg-[#2A2A3C] border border-white/10 p-6 rounded-lg">
                   <h3 className="text-lg font-serif mb-4 text-cream">Type de réservations</h3>
                   {bookingsByType.every(item => item.value === 0) ? (
                     <p className="text-muted text-sm">Aucune donnée disponible</p>
@@ -460,7 +460,7 @@ const isAdmin = user?.role === 'admin';
                         <CartesianGrid strokeDasharray="3 3" stroke="#333" />
                         <XAxis dataKey="name" stroke="#aaa" />
                         <YAxis stroke="#aaa" />
-                        <Tooltip contentStyle={{ backgroundColor: '#1A1A24', borderColor: '#C9A84C' }} />
+                        <Tooltip contentStyle={{ backgroundColor: '#2A2A3C', borderColor: '#C9A84C' }} />
                         <Legend />
                         <Bar dataKey="value" fill="#C9A84C" name="Nombre de réservations" />
                       </BarChart>
@@ -468,18 +468,18 @@ const isAdmin = user?.role === 'admin';
                   )}
                 </div>
 
-                <div className="bg-dark-2 border border-white/5 p-6 rounded-lg">
+                <div className="bg-[#2A2A3C] border border-white/10 p-6 rounded-lg">
                   <h3 className="text-lg font-serif mb-4 text-cream">Dernières réservations</h3>
                   {loading ? (
                     <div className="space-y-2">
-                      {[...Array(3)].map((_, i) => <div key={i} className="bg-dark-3 h-12 animate-pulse rounded" />)}
+                      {[...Array(3)].map((_, i) => <div key={i} className="bg-[#35354A] h-12 animate-pulse rounded" />)}
                     </div>
                   ) : bookings.length === 0 ? (
                     <p className="text-muted text-sm">Aucune réservation</p>
                   ) : (
                     <div className="space-y-3 max-h-80 overflow-y-auto pr-2">
                       {bookings.slice(0, 5).map((b) => (
-                        <div key={b._id} className="flex justify-between items-center border-b border-white/5 pb-2">
+                        <div key={b._id} className="flex justify-between items-center border-b border-white/10 pb-2">
                           <div>
                             <div className="text-sm font-medium text-cream">
                               {b.bookingType === 'excursion' ? b.excursion?.name : `${b.from} → ${b.to}`}
@@ -510,11 +510,11 @@ const isAdmin = user?.role === 'admin';
                 {loading ? (
                   <div className="space-y-3">
                     {[...Array(3)].map((_, i) => (
-                      <div key={i} className="bg-dark-2 h-20 animate-pulse rounded" />
+                      <div key={i} className="bg-[#2A2A3C] h-20 animate-pulse rounded" />
                     ))}
                   </div>
                 ) : bookings.length === 0 ? (
-                  <div className="bg-dark-2 border border-gold/10 p-12 text-center rounded">
+                  <div className="bg-[#2A2A3C] border border-gold/10 p-12 text-center rounded">
                     <p className="text-muted font-light">Aucune réservation trouvée.</p>
                     {!isAdmin && (
                       <Link to="/excursions" className="btn-gold mt-6 inline-block">
@@ -527,7 +527,7 @@ const isAdmin = user?.role === 'admin';
                     {bookings.slice(0, 5).map((b) => (
                       <div
                         key={b._id}
-                        className="bg-dark-2 border border-white/5 p-4 rounded flex items-center justify-between"
+                        className="bg-[#2A2A3C] border border-white/10 p-4 rounded flex items-center justify-between"
                       >
                         <div className="flex items-center gap-4">
                           <div className="text-2xl text-gold">
@@ -676,7 +676,7 @@ function VehiclePricingView({ vehicles, loading, isAdmin, selectedVehicle, onSel
           <p className="text-muted text-sm mt-1">Sélectionnez un véhicule pour gérer ses tarifs par trajet</p>
         </div>
         {vehicles.length === 0 ? (
-          <div className="bg-dark-2 border border-gold/10 p-12 text-center rounded">
+          <div className="bg-[#2A2A3C] border border-gold/10 p-12 text-center rounded">
             <FiTruck className="text-gold mx-auto mb-3" size={32} />
             <p className="text-muted">Aucun véhicule disponible.</p>
           </div>
@@ -704,9 +704,9 @@ function VehicleCard({ vehicle, onClick }) {
   return (
     <button
       onClick={onClick}
-      className="group bg-dark-2 border border-white/5 hover:border-gold/30 rounded-lg overflow-hidden text-left transition-all duration-300 hover:shadow-lg hover:shadow-gold/5 hover:-translate-y-0.5"
+      className="group bg-[#2A2A3C] border border-white/10 hover:border-gold/30 rounded-lg overflow-hidden text-left transition-all duration-300 hover:shadow-lg hover:shadow-gold/5 hover:-translate-y-0.5"
     >
-      <div className="relative h-36 bg-dark-3 overflow-hidden">
+      <div className="relative h-36 bg-[#35354A] overflow-hidden">
         {vehicle.image ? (
           <img
             src={getImageUrl(vehicle.image)}
@@ -719,7 +719,7 @@ function VehicleCard({ vehicle, onClick }) {
             <FiTruck className="text-gold/30" size={48} />
           </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-dark-2/80 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#2A2A3C]/80 to-transparent" />
       </div>
       <div className="p-4">
         <h3 className="text-cream font-medium text-sm group-hover:text-gold transition-colors">{vehicle.name}</h3>
@@ -882,7 +882,7 @@ function VehicleDestinationPricing({ vehicle, isAdmin, onBack }) {
       )}
 
       {isAdmin && (
-        <div className="bg-dark-2 border border-white/5 rounded-lg p-6 mb-6">
+        <div className="bg-[#2A2A3C] border border-white/10 rounded-lg p-6 mb-6">
           <h2 className="text-base font-serif text-cream mb-4 flex items-center gap-2">
             <FiPlus className="text-gold" size={16} />
             Ajouter un nouveau tarif
@@ -895,7 +895,7 @@ function VehicleDestinationPricing({ vehicle, isAdmin, onBack }) {
                 type="text" placeholder="Ex: Tunis"
                 value={addForm.from}
                 onChange={(e) => setAddForm({ ...addForm, from: e.target.value })}
-                className="w-full bg-dark-3 border border-white/10 rounded px-3 py-2 text-sm text-cream placeholder-muted/40 focus:outline-none focus:border-gold/40"
+                className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-sm text-cream placeholder-muted/40 focus:outline-none focus:border-gold/40"
               />
             </div>
             <div>
@@ -904,7 +904,7 @@ function VehicleDestinationPricing({ vehicle, isAdmin, onBack }) {
                 type="text" placeholder="Ex: Hammamet"
                 value={addForm.to}
                 onChange={(e) => setAddForm({ ...addForm, to: e.target.value })}
-                className="w-full bg-dark-3 border border-white/10 rounded px-3 py-2 text-sm text-cream placeholder-muted/40 focus:outline-none focus:border-gold/40"
+                className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-sm text-cream placeholder-muted/40 focus:outline-none focus:border-gold/40"
               />
             </div>
             <div>
@@ -912,7 +912,7 @@ function VehicleDestinationPricing({ vehicle, isAdmin, onBack }) {
               <select
                 value={addForm.tripType}
                 onChange={(e) => setAddForm({ ...addForm, tripType: e.target.value })}
-                className="w-full bg-dark-3 border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40"
+                className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40"
               >
                 <option value="one_way">Aller simple</option>
                 <option value="round_trip">Aller-retour</option>
@@ -924,7 +924,7 @@ function VehicleDestinationPricing({ vehicle, isAdmin, onBack }) {
                 type="number" placeholder="Ex: 150"
                 value={addForm.price}
                 onChange={(e) => setAddForm({ ...addForm, price: e.target.value })}
-                className="w-full bg-dark-3 border border-white/10 rounded px-3 py-2 text-sm text-cream placeholder-muted/40 focus:outline-none focus:border-gold/40"
+                className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-sm text-cream placeholder-muted/40 focus:outline-none focus:border-gold/40"
               />
             </div>
             <button
@@ -937,8 +937,8 @@ function VehicleDestinationPricing({ vehicle, isAdmin, onBack }) {
         </div>
       )}
 
-      <div className="bg-dark-2 border border-white/5 rounded-lg overflow-hidden">
-        <div className="px-6 py-4 border-b border-white/5 flex items-center justify-between">
+      <div className="bg-[#2A2A3C] border border-white/10 rounded-lg overflow-hidden">
+        <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between">
           <h2 className="text-base font-serif text-cream">
             Tarifs ({prices.length} destination{prices.length !== 1 ? 's' : ''})
           </h2>
@@ -956,7 +956,7 @@ function VehicleDestinationPricing({ vehicle, isAdmin, onBack }) {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-dark-3 border-b border-white/5">
+              <thead className="bg-[#35354A] border-b border-white/10">
                 <tr>
                   <th className="px-6 py-3 text-left text-muted font-medium text-xs uppercase tracking-wider">De</th>
                   <th className="px-6 py-3 text-left text-muted font-medium text-xs uppercase tracking-wider">À</th>
@@ -969,27 +969,27 @@ function VehicleDestinationPricing({ vehicle, isAdmin, onBack }) {
               </thead>
               <tbody>
                 {prices.map((p) => (
-                  <tr key={p._id} className="border-b border-white/5 hover:bg-white/3 transition-colors">
+                  <tr key={p._id} className="border-b border-white/10 hover:bg-white/3 transition-colors">
                     {editingId === p._id ? (
                       <>
                         <td className="px-6 py-3">
                           <input value={editForm.from} onChange={(e) => setEditForm({ ...editForm, from: e.target.value })}
-                            className="bg-dark-3 border border-gold/30 rounded px-2 py-1 text-cream text-sm w-full focus:outline-none" />
+                            className="bg-[#35354A] border border-gold/30 rounded px-2 py-1 text-cream text-sm w-full focus:outline-none" />
                         </td>
                         <td className="px-6 py-3">
                           <input value={editForm.to} onChange={(e) => setEditForm({ ...editForm, to: e.target.value })}
-                            className="bg-dark-3 border border-gold/30 rounded px-2 py-1 text-cream text-sm w-full focus:outline-none" />
+                            className="bg-[#35354A] border border-gold/30 rounded px-2 py-1 text-cream text-sm w-full focus:outline-none" />
                         </td>
                         <td className="px-6 py-3">
                           <select value={editForm.tripType} onChange={(e) => setEditForm({ ...editForm, tripType: e.target.value })}
-                            className="bg-dark-3 border border-gold/30 rounded px-2 py-1 text-cream text-sm focus:outline-none">
+                            className="bg-[#35354A] border border-gold/30 rounded px-2 py-1 text-cream text-sm focus:outline-none">
                             <option value="one_way">Aller simple</option>
                             <option value="round_trip">Aller-retour</option>
                           </select>
                         </td>
                         <td className="px-6 py-3">
                           <input type="number" value={editForm.price} onChange={(e) => setEditForm({ ...editForm, price: e.target.value })}
-                            className="bg-dark-3 border border-gold/30 rounded px-2 py-1 text-cream text-sm w-24 focus:outline-none" />
+                            className="bg-[#35354A] border border-gold/30 rounded px-2 py-1 text-cream text-sm w-24 focus:outline-none" />
                         </td>
                         <td className="px-6 py-3">
                           <div className="flex items-center gap-2">
@@ -1062,9 +1062,9 @@ function ClientList({ clients, loading, isAdmin, onView }) {
   return (
     <div>
       <h1 className="text-2xl font-serif mb-6">Clients</h1>
-      <div className="bg-dark-2 border border-white/5 overflow-x-auto">
+      <div className="bg-[#2A2A3C] border border-white/10 overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-dark-3 border-b border-white/5">
+          <thead className="bg-[#35354A] border-b border-white/10">
             <tr>
               <th className="px-6 py-4 text-left text-muted font-medium">Nom</th>
               <th className="px-6 py-4 text-left text-muted font-medium">Email</th>
@@ -1076,7 +1076,7 @@ function ClientList({ clients, loading, isAdmin, onView }) {
           </thead>
           <tbody>
             {clients.map((client) => (
-              <tr key={client.email} className="border-b border-white/5 hover:bg-white/5">
+              <tr key={client.email} className="border-b border-white/10 hover:bg-white/5">
                 <td className="px-6 py-4">{client.firstName} {client.lastName}</td>
                 <td className="px-6 py-4">
                   <a href={`mailto:${client.email}`} className="text-gold hover:underline">{client.email}</a>
@@ -1117,9 +1117,9 @@ function VehicleList({ vehicles, loading, isAdmin, onCreate, onView, onEdit, onD
           </button>
         )}
       </div>
-      <div className="bg-dark-2 border border-white/5 overflow-x-auto">
+      <div className="bg-[#2A2A3C] border border-white/10 overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-dark-3 border-b border-white/5">
+          <thead className="bg-[#35354A] border-b border-white/10">
             <tr>
               <th className="px-6 py-4 text-left text-muted font-medium">Image</th>
               <th className="px-6 py-4 text-left text-muted font-medium">Nom</th>
@@ -1131,7 +1131,7 @@ function VehicleList({ vehicles, loading, isAdmin, onCreate, onView, onEdit, onD
           </thead>
           <tbody>
             {vehicles.map((v) => (
-              <tr key={v._id} className="border-b border-white/5 hover:bg-white/5">
+              <tr key={v._id} className="border-b border-white/10 hover:bg-white/5">
                 <td className="px-6 py-4">
                   {v.image ? (
                     <img
@@ -1141,7 +1141,7 @@ function VehicleList({ vehicles, loading, isAdmin, onCreate, onView, onEdit, onD
                       className="h-12 w-12 object-cover rounded"
                     />
                   ) : (
-                    <div className="h-12 w-12 bg-dark-3 rounded flex items-center justify-center">
+                    <div className="h-12 w-12 bg-[#35354A] rounded flex items-center justify-center">
                       <FiTruck className="text-gold/30" size={18} />
                     </div>
                   )}
@@ -1177,9 +1177,9 @@ function ExcursionList({ excursions, loading, isAdmin, onCreate, onView, onEdit,
           </button>
         )}
       </div>
-      <div className="bg-dark-2 border border-white/5 overflow-x-auto">
+      <div className="bg-[#2A2A3C] border border-white/10 overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-dark-3 border-b border-white/5">
+          <thead className="bg-[#35354A] border-b border-white/10">
             <tr>
               <th className="px-6 py-4 text-left text-muted font-medium">Image</th>
               <th className="px-6 py-4 text-left text-muted font-medium">Nom</th>
@@ -1191,7 +1191,7 @@ function ExcursionList({ excursions, loading, isAdmin, onCreate, onView, onEdit,
           </thead>
           <tbody>
             {excursions.map((e) => (
-              <tr key={e._id} className="border-b border-white/5 hover:bg-white/5">
+              <tr key={e._id} className="border-b border-white/10 hover:bg-white/5">
                 <td className="px-6 py-4">
                   <img
                     src={getImageUrl(e.coverImage)}
@@ -1224,9 +1224,9 @@ function TransferList({ bookings, loading, isAdmin, onView, onEdit, onDelete }) 
   return (
     <div>
       <h1 className="text-2xl font-serif mb-6">Réservations Transferts</h1>
-      <div className="bg-dark-2 border border-white/5 overflow-x-auto">
+      <div className="bg-[#2A2A3C] border border-white/10 overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-dark-3 border-b border-white/5">
+          <thead className="bg-[#35354A] border-b border-white/10">
             <tr>
               <th className="p-4 text-left text-muted font-medium">Code</th>
               <th className="p-4 text-left text-muted font-medium">Client</th>
@@ -1240,7 +1240,7 @@ function TransferList({ bookings, loading, isAdmin, onView, onEdit, onDelete }) 
           </thead>
           <tbody>
             {bookings.map((b) => (
-              <tr key={b._id} className="border-b border-white/5 hover:bg-white/5">
+              <tr key={b._id} className="border-b border-white/10 hover:bg-white/5">
                 <td className="p-4 font-mono text-gold">{b.confirmationCode}</td>
                 <td className="p-4">{b.firstName} {b.lastName}</td>
                 <td className="p-4">{b.from} → {b.to}</td>
@@ -1269,9 +1269,9 @@ function ExcursionBookingList({ bookings, loading, isAdmin, onView, onEdit, onDe
   return (
     <div>
       <h1 className="text-2xl font-serif mb-6">Réservations Excursions</h1>
-      <div className="bg-dark-2 border border-white/5 overflow-x-auto">
+      <div className="bg-[#2A2A3C] border border-white/10 overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-dark-3 border-b border-white/5">
+          <thead className="bg-[#35354A] border-b border-white/10">
             <tr>
               <th className="p-4 text-left text-muted font-medium">Code</th>
               <th className="p-4 text-left text-muted font-medium">Client</th>
@@ -1285,7 +1285,7 @@ function ExcursionBookingList({ bookings, loading, isAdmin, onView, onEdit, onDe
           </thead>
           <tbody>
             {bookings.map((b) => (
-              <tr key={b._id} className="border-b border-white/5 hover:bg-white/5">
+              <tr key={b._id} className="border-b border-white/10 hover:bg-white/5">
                 <td className="p-4 font-mono text-gold">{b.confirmationCode}</td>
                 <td className="p-4">{b.firstName} {b.lastName}</td>
                 <td className="p-4">{b.excursion?.name || '-'}</td>
@@ -1305,6 +1305,60 @@ function ExcursionBookingList({ bookings, loading, isAdmin, onView, onEdit, onDe
           </tbody>
         </table>
       </div>
+    </div>
+  );
+}
+
+// ------------------------------------------------------------------
+// Helpers pour le modal Détails
+// ------------------------------------------------------------------
+const fmtDate = (d) =>
+  d ? new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '-';
+
+function DetailSection({ title, icon, children }) {
+  return (
+    <div className="bg-[#35354A] border border-white/10 rounded-lg overflow-hidden">
+      <div className="flex items-center gap-2 px-4 py-2.5 bg-white/5 border-b border-white/10">
+        <span className="text-gold text-sm">{icon}</span>
+        <h3 className="text-[11px] uppercase tracking-[2px] text-cream/80 font-medium">{title}</h3>
+      </div>
+      <dl className="divide-y divide-white/5">{children}</dl>
+    </div>
+  );
+}
+
+function DetailRow({ label, children, mono = false }) {
+  return (
+    <div className="grid grid-cols-3 gap-4 px-4 py-3 text-sm">
+      <dt className="text-muted">{label}</dt>
+      <dd className={`col-span-2 break-words ${mono ? 'font-mono text-gold' : 'text-cream'}`}>
+        {children || '-'}
+      </dd>
+    </div>
+  );
+}
+
+function StatusBadge({ status }) {
+  return (
+    <span className={`inline-block text-xs border px-3 py-1 rounded-full ${STATUS_STYLES[status] || ''}`}>
+      {STATUS_LABELS[status] || status}
+    </span>
+  );
+}
+
+function DetailHero({ src, alt, fallback }) {
+  return (
+    <div className="h-48 rounded-lg overflow-hidden bg-[#35354A] border border-white/10">
+      {src ? (
+        <img
+          src={src}
+          alt={alt}
+          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+          className="w-full h-full object-cover"
+        />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center text-gold/30">{fallback}</div>
+      )}
     </div>
   );
 }
@@ -1372,82 +1426,130 @@ function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin }) {
     switch (resource) {
       case 'vehicle':
         return (
-          <div className="space-y-2 text-sm">
-            <p><strong className="text-muted">Nom :</strong> <span className="text-cream">{item.name}</span></p>
-            <p><strong className="text-muted">Description :</strong> <span className="text-cream">{item.description}</span></p>
-            <p><strong className="text-muted">Prix :</strong> {formatPrice(item.price)}</p>
-            <p><strong className="text-muted">Capacité :</strong> <span className="text-cream">{item.capacity} personnes</span></p>
-            {item.image && (
-              <img
-                src={getImageUrl(item.image)}
-                alt={item.name}
-                onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                className="max-h-40 mt-2 rounded"
-              />
-            )}
+          <div className="space-y-4">
+            <DetailHero src={item.image ? getImageUrl(item.image) : null} alt={item.name} fallback={<FiTruck size={56} />} />
+            <DetailSection title="Informations" icon={<FiTruck />}>
+              <DetailRow label="Nom">{item.name}</DetailRow>
+              <DetailRow label="Capacité">{item.capacity ? `${item.capacity} personnes` : '-'}</DetailRow>
+              <DetailRow label="Prix">{formatPrice(item.price)}</DetailRow>
+            </DetailSection>
+            <DetailSection title="Description" icon={<FiTag />}>
+              <p className="px-4 py-3 text-sm text-cream/90 leading-relaxed">{item.description || '-'}</p>
+            </DetailSection>
           </div>
         );
 
       case 'excursion':
         return (
-          <div className="space-y-2 text-sm">
-            <p><strong className="text-muted">Nom :</strong> <span className="text-cream">{item.name}</span></p>
-            <p><strong className="text-muted">Destination :</strong> <span className="text-cream">{item.destination}</span></p>
-            <p><strong className="text-muted">Durée :</strong> <span className="text-cream">{item.duration}</span></p>
-            <p><strong className="text-muted">Prix par personne :</strong> <span className="text-gold">{item.pricePerPerson} €</span></p>
-            <p><strong className="text-muted">Description :</strong> <span className="text-cream">{item.description}</span></p>
-            {item.coverImage && (
-              <img
-                src={getImageUrl(item.coverImage)}
-                alt={item.name}
-                onError={(e) => {
-                  e.currentTarget.src =
-                    'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&q=80';
-                }}
-                className="max-h-40 mt-2 rounded"
-              />
-            )}
+          <div className="space-y-4">
+            <DetailHero src={item.coverImage ? getImageUrl(item.coverImage) : null} alt={item.name} fallback={<FiMap size={56} />} />
+            <DetailSection title="Informations" icon={<FiMap />}>
+              <DetailRow label="Nom">{item.name}</DetailRow>
+              <DetailRow label="Destination">{item.destination}</DetailRow>
+              <DetailRow label="Durée">{item.duration}</DetailRow>
+              <DetailRow label="Prix par personne">
+                <span className="text-gold font-medium">{item.pricePerPerson} €</span>
+              </DetailRow>
+            </DetailSection>
+            <DetailSection title="Description" icon={<FiTag />}>
+              <p className="px-4 py-3 text-sm text-cream/90 leading-relaxed">{item.description || '-'}</p>
+            </DetailSection>
           </div>
         );
 
       case 'client':
         return (
-          <div className="space-y-2 text-sm">
-            <p><strong className="text-muted">Nom :</strong> <span className="text-cream">{item.firstName} {item.lastName}</span></p>
-            <p><strong className="text-muted">Email :</strong> <span className="text-cream">{item.email}</span></p>
-            <p><strong className="text-muted">Téléphone :</strong> <span className="text-cream">{item.phone}</span></p>
-            <p><strong className="text-muted">Réservations :</strong> <span className="text-gold">{item.totalBookings}</span></p>
-            <p><strong className="text-muted">Dernière activité :</strong> <span className="text-cream">{new Date(item.lastBooking).toLocaleDateString('fr-FR')}</span></p>
+          <div className="space-y-4">
+            <div className="flex items-center gap-4 bg-[#35354A] border border-white/10 rounded-lg p-4">
+              <div className="h-14 w-14 rounded-full bg-gold/20 text-gold flex items-center justify-center text-xl font-serif">
+                {(item.firstName?.[0] || '?').toUpperCase()}{(item.lastName?.[0] || '').toUpperCase()}
+              </div>
+              <div>
+                <div className="text-lg font-serif text-cream">{item.firstName} {item.lastName}</div>
+                <div className="text-xs text-muted">{item.totalBookings} réservation(s)</div>
+              </div>
+            </div>
+            <DetailSection title="Contact" icon={<FiUsers />}>
+              <DetailRow label="Email">
+                <a href={`mailto:${item.email}`} className="text-gold hover:underline">{item.email}</a>
+              </DetailRow>
+              <DetailRow label="Téléphone">
+                <a href={`tel:${item.phone}`} className="text-cream hover:text-gold">{item.phone}</a>
+              </DetailRow>
+            </DetailSection>
+            <DetailSection title="Activité" icon={<FiClock />}>
+              <DetailRow label="Réservations">{item.totalBookings}</DetailRow>
+              <DetailRow label="Dernière activité">{fmtDate(item.lastBooking)}</DetailRow>
+            </DetailSection>
           </div>
         );
 
       case 'transfer':
         return (
-          <div className="space-y-2 text-sm">
-            <p><strong className="text-muted">Code :</strong> <span className="text-gold font-mono">{item.confirmationCode}</span></p>
-            <p><strong className="text-muted">Client :</strong> <span className="text-cream">{item.firstName} {item.lastName}</span></p>
-            <p><strong className="text-muted">Email :</strong> <span className="text-cream">{item.email}</span></p>
-            <p><strong className="text-muted">Téléphone :</strong> <span className="text-cream">{item.phone}</span></p>
-            <p><strong className="text-muted">Trajet :</strong> <span className="text-cream">{item.from} → {item.to}</span></p>
-            <p><strong className="text-muted">Date :</strong> <span className="text-cream">{new Date(item.departureDate).toLocaleDateString('fr-FR')}</span></p>
-            <p><strong className="text-muted">Véhicule :</strong> <span className="text-cream">{item.vehicle?.name || '-'}</span></p>
-            <p><strong className="text-muted">Prix :</strong> {formatPrice(item.totalPrice ?? item.total)}</p>
-            <p><strong className="text-muted">Statut :</strong> <span className={`text-xs border px-2 py-1 ml-1 ${STATUS_STYLES[item.status]}`}>{STATUS_LABELS[item.status]}</span></p>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between bg-[#35354A] border border-white/10 rounded-lg p-4">
+              <div>
+                <div className="text-[10px] uppercase tracking-widest text-muted">Code de confirmation</div>
+                <div className="font-mono text-xl text-gold">{item.confirmationCode}</div>
+              </div>
+              <StatusBadge status={item.status} />
+            </div>
+            <DetailSection title="Client" icon={<FiUsers />}>
+              <DetailRow label="Nom">{item.firstName} {item.lastName}</DetailRow>
+              <DetailRow label="Email">
+                <a href={`mailto:${item.email}`} className="text-gold hover:underline">{item.email}</a>
+              </DetailRow>
+              <DetailRow label="Téléphone">
+                <a href={`tel:${item.phone}`} className="hover:text-gold">{item.phone}</a>
+              </DetailRow>
+            </DetailSection>
+            <DetailSection title="Trajet" icon={<FiMap />}>
+              <DetailRow label="Départ">{item.from}</DetailRow>
+              <DetailRow label="Destination">{item.to}</DetailRow>
+              <DetailRow label="Date">{fmtDate(item.departureDate)}</DetailRow>
+              <DetailRow label="Véhicule">{item.vehicle?.name}</DetailRow>
+            </DetailSection>
+            <DetailSection title="Paiement" icon={<FiDollarSign />}>
+              <DetailRow label="Prix total">
+                <span className="text-gold font-medium">{formatPrice(item.totalPrice ?? item.total)}</span>
+              </DetailRow>
+            </DetailSection>
           </div>
         );
 
       case 'excursionBooking':
         return (
-          <div className="space-y-2 text-sm">
-            <p><strong className="text-muted">Code :</strong> <span className="text-gold font-mono">{item.confirmationCode}</span></p>
-            <p><strong className="text-muted">Client :</strong> <span className="text-cream">{item.firstName} {item.lastName}</span></p>
-            <p><strong className="text-muted">Email :</strong> <span className="text-cream">{item.email}</span></p>
-            <p><strong className="text-muted">Téléphone :</strong> <span className="text-cream">{item.phone}</span></p>
-            <p><strong className="text-muted">Excursion :</strong> <span className="text-cream">{item.excursion?.name}</span></p>
-            <p><strong className="text-muted">Date :</strong> <span className="text-cream">{new Date(item.departureDate).toLocaleDateString('fr-FR')}</span></p>
-            <p><strong className="text-muted">Participants :</strong> <span className="text-cream">{item.passengers?.adults || 0} adultes</span></p>
-            <p><strong className="text-muted">Prix :</strong> {formatPrice(item.totalPrice ?? item.total)}</p>
-            <p><strong className="text-muted">Statut :</strong> <span className={`text-xs border px-2 py-1 ml-1 ${STATUS_STYLES[item.status]}`}>{STATUS_LABELS[item.status]}</span></p>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between bg-[#35354A] border border-white/10 rounded-lg p-4">
+              <div>
+                <div className="text-[10px] uppercase tracking-widest text-muted">Code de confirmation</div>
+                <div className="font-mono text-xl text-gold">{item.confirmationCode}</div>
+              </div>
+              <StatusBadge status={item.status} />
+            </div>
+            <DetailSection title="Client" icon={<FiUsers />}>
+              <DetailRow label="Nom">{item.firstName} {item.lastName}</DetailRow>
+              <DetailRow label="Email">
+                <a href={`mailto:${item.email}`} className="text-gold hover:underline">{item.email}</a>
+              </DetailRow>
+              <DetailRow label="Téléphone">
+                <a href={`tel:${item.phone}`} className="hover:text-gold">{item.phone}</a>
+              </DetailRow>
+            </DetailSection>
+            <DetailSection title="Excursion" icon={<FiMap />}>
+              <DetailRow label="Excursion">{item.excursion?.name}</DetailRow>
+              <DetailRow label="Date">{fmtDate(item.preferredDate || item.departureDate)}</DetailRow>
+              <DetailRow label="Participants">
+                {item.groupSize ? `${item.groupSize} pers.` : `${item.passengers?.adults || 0} adulte(s)`}
+              </DetailRow>
+              <DetailRow label="Point de départ">{item.departurePoint}</DetailRow>
+              {item.specialRequests && <DetailRow label="Demandes">{item.specialRequests}</DetailRow>}
+            </DetailSection>
+            <DetailSection title="Paiement" icon={<FiDollarSign />}>
+              <DetailRow label="Prix total">
+                <span className="text-gold font-medium">{formatPrice(item.totalPrice ?? item.total)}</span>
+              </DetailRow>
+            </DetailSection>
           </div>
         );
 
@@ -1465,7 +1567,7 @@ function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin }) {
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value)}
-              className="w-full bg-dark-3 border border-white/5 rounded px-3 py-2 text-cream"
+              className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-cream"
             >
               {Object.entries(STATUS_LABELS).map(([key, label]) => (
                 <option key={key} value={key}>{label}</option>
@@ -1486,24 +1588,24 @@ function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin }) {
           <div>
             <label className="block text-sm text-muted mb-1">Nom</label>
             <input type="text" name="name" value={formData.name || ''} onChange={handleChange}
-              className="w-full bg-dark-3 border border-white/5 rounded px-3 py-2 text-cream" />
+              className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-cream" />
           </div>
           <div>
             <label className="block text-sm text-muted mb-1">Description</label>
             <textarea name="description" value={formData.description || ''} onChange={handleChange} rows="3"
-              className="w-full bg-dark-3 border border-white/5 rounded px-3 py-2 text-cream" />
+              className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-cream" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm text-muted mb-1">Prix (€) — vide = sur demande</label>
               <input type="number" min="0" name="price" value={formData.price ?? ''} onChange={handleChange}
                 placeholder="Sur demande"
-                className="w-full bg-dark-3 border border-white/5 rounded px-3 py-2 text-cream" />
+                className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-cream" />
             </div>
             <div>
               <label className="block text-sm text-muted mb-1">Capacité</label>
               <input type="number" min="0" name="capacity" value={formData.capacity || ''} onChange={handleChange}
-                className="w-full bg-dark-3 border border-white/5 rounded px-3 py-2 text-cream" />
+                className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-cream" />
             </div>
           </div>
 
@@ -1512,7 +1614,7 @@ function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin }) {
             <label className="block text-sm text-muted mb-1">Image</label>
             <div className="flex items-center gap-4">
               <label className="flex-1 cursor-pointer">
-                <div className="w-full bg-dark-3 border border-dashed border-white/20 hover:border-gold/40 rounded px-3 py-2 text-sm text-muted flex items-center gap-2 transition-colors">
+                <div className="w-full bg-[#35354A] border border-dashed border-white/20 hover:border-gold/40 rounded px-3 py-2 text-sm text-muted flex items-center gap-2 transition-colors">
                   <FiImage size={16} className="text-gold" />
                   <span className="truncate">
                     {imageFile ? imageFile.name : 'Choisir une nouvelle image…'}
@@ -1557,24 +1659,24 @@ function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin }) {
           <div>
             <label className="block text-sm text-muted mb-1">Nom</label>
             <input type="text" name="name" value={formData.name || ''} onChange={handleChange}
-              className="w-full bg-dark-3 border border-white/5 rounded px-3 py-2 text-cream" />
+              className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-cream" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm text-muted mb-1">Destination</label>
               <input type="text" name="destination" value={formData.destination || ''} onChange={handleChange}
-                className="w-full bg-dark-3 border border-white/5 rounded px-3 py-2 text-cream" />
+                className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-cream" />
             </div>
             <div>
               <label className="block text-sm text-muted mb-1">Durée</label>
               <input type="text" name="duration" value={formData.duration || ''} onChange={handleChange}
-                className="w-full bg-dark-3 border border-white/5 rounded px-3 py-2 text-cream" />
+                className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-cream" />
             </div>
           </div>
           <div>
             <label className="block text-sm text-muted mb-1">Prix par personne (€)</label>
             <input type="number" name="pricePerPerson" value={formData.pricePerPerson || ''} onChange={handleChange}
-              className="w-full bg-dark-3 border border-white/5 rounded px-3 py-2 text-cream" />
+              className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-cream" />
           </div>
 
           {/* Image */}
@@ -1582,7 +1684,7 @@ function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin }) {
             <label className="block text-sm text-muted mb-1">Image de couverture</label>
             <div className="flex items-center gap-4">
               <label className="flex-1 cursor-pointer">
-                <div className="w-full bg-dark-3 border border-dashed border-white/20 hover:border-gold/40 rounded px-3 py-2 text-sm text-muted flex items-center gap-2 transition-colors">
+                <div className="w-full bg-[#35354A] border border-dashed border-white/20 hover:border-gold/40 rounded px-3 py-2 text-sm text-muted flex items-center gap-2 transition-colors">
                   <FiImage size={16} className="text-gold" />
                   <span className="truncate">
                     {imageFile ? imageFile.name : 'Choisir une nouvelle image…'}
@@ -1624,19 +1726,43 @@ function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin }) {
     return <p className="text-muted text-sm">Édition non disponible pour cette ressource.</p>;
   };
 
+  const RESOURCE_TITLES = {
+    vehicle: 'Véhicule', excursion: 'Excursion', client: 'Client',
+    transfer: 'Transfert', excursionBooking: 'Réservation excursion',
+  };
+
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-dark-2 border border-white/5 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center p-6 border-b border-white/5">
-          <h2 className="text-xl font-serif">
-            {type === 'view' ? 'Détails' : 'Modifier'}{' '}
-            {{ vehicle: 'Véhicule', excursion: 'Excursion', client: 'Client', transfer: 'Transfert', excursionBooking: 'Réservation' }[resource]}
-          </h2>
-          <button onClick={onClose} className="text-muted hover:text-cream"><FiX size={24} /></button>
+    <div
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-[#2A2A3C] border border-white/15 rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex justify-between items-center px-6 py-4 border-b border-white/10">
+          <div>
+            <div className="text-[10px] uppercase tracking-[3px] text-gold">
+              {type === 'view' ? 'Détails' : 'Modifier'}
+            </div>
+            <h2 className="text-xl font-serif text-cream">{RESOURCE_TITLES[resource]}</h2>
+          </div>
+          <button onClick={onClose} className="p-1.5 text-muted hover:text-cream hover:bg-white/10 rounded transition-colors">
+            <FiX size={22} />
+          </button>
         </div>
-        <div className="p-6">
+
+        <div className="p-6 overflow-y-auto">
           {type === 'view' ? renderDetails() : renderEditForm()}
         </div>
+
+        {type === 'view' && (
+          <div className="px-6 py-4 border-t border-white/10 flex justify-end">
+            <button onClick={onClose} className="px-5 py-2 text-sm bg-white/10 hover:bg-white/15 text-cream rounded transition-colors">
+              Fermer
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1777,10 +1903,10 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
       onClick={onClose}
     >
       <div
-        className="bg-dark-2 border border-white/10 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+        className="bg-[#2A2A3C] border border-white/10 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="sticky top-0 bg-dark-2 border-b border-white/5 p-6 flex items-center justify-between z-10">
+        <div className="sticky top-0 bg-[#2A2A3C] border-b border-white/10 p-6 flex items-center justify-between z-10">
           <h2 className="text-xl font-serif text-cream flex items-center gap-2">
             {isVehicle ? <FiTruck className="text-gold" /> : <FiMap className="text-gold" />}
             {title}
@@ -1804,14 +1930,14 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
                   <label className="block text-[10px] uppercase tracking-wider text-muted mb-1">Nom *</label>
                   <input
                     type="text" name="name" value={form.name} onChange={handleChange}
-                    className="w-full bg-dark-3 border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40"
+                    className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40"
                   />
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-[10px] uppercase tracking-wider text-muted mb-1">Description *</label>
                   <textarea
                     name="description" value={form.description} onChange={handleChange} rows="3"
-                    className="w-full bg-dark-3 border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40 resize-none"
+                    className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40 resize-none"
                   />
                 </div>
                 <div>
@@ -1821,7 +1947,7 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
                   <input
                     type="number" min="0" name="price" value={form.price} onChange={handleChange}
                     placeholder="Laisser vide = sur demande"
-                    className="w-full bg-dark-3 border border-white/10 rounded px-3 py-2 text-sm text-cream placeholder-muted/40 focus:outline-none focus:border-gold/40"
+                    className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-sm text-cream placeholder-muted/40 focus:outline-none focus:border-gold/40"
                   />
                   <p className="text-muted text-[10px] mt-1">
                     Vide → affiché comme <span className="text-gold">« Prix sur demande »</span>
@@ -1831,7 +1957,7 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
                   <label className="block text-[10px] uppercase tracking-wider text-muted mb-1">Capacité (pers.) *</label>
                   <input
                     type="number" min="0" name="capacity" value={form.capacity} onChange={handleChange}
-                    className="w-full bg-dark-3 border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40"
+                    className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40"
                   />
                 </div>
 
@@ -1840,7 +1966,7 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
                   <label className="block text-[10px] uppercase tracking-wider text-muted mb-1">Image</label>
                   <div className="flex items-center gap-4">
                     <label className="flex-1 cursor-pointer">
-                      <div className="w-full bg-dark-3 border border-dashed border-white/20 hover:border-gold/40 rounded px-3 py-3 text-sm text-muted flex items-center gap-2 transition-colors">
+                      <div className="w-full bg-[#35354A] border border-dashed border-white/20 hover:border-gold/40 rounded px-3 py-3 text-sm text-muted flex items-center gap-2 transition-colors">
                         <FiImage size={16} className="text-gold" />
                         <span className="truncate">
                           {imageFile ? imageFile.name : 'Choisir une image depuis l’appareil…'}
@@ -1877,28 +2003,28 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
                   <label className="block text-[10px] uppercase tracking-wider text-muted mb-1">Nom *</label>
                   <input
                     type="text" name="name" value={form.name} onChange={handleChange}
-                    className="w-full bg-dark-3 border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40"
+                    className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40"
                   />
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-[10px] uppercase tracking-wider text-muted mb-1">Description courte</label>
                   <input
                     type="text" name="shortDesc" value={form.shortDesc} onChange={handleChange}
-                    className="w-full bg-dark-3 border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40"
+                    className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40"
                   />
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-[10px] uppercase tracking-wider text-muted mb-1">Description complète *</label>
                   <textarea
                     name="description" value={form.description} onChange={handleChange} rows="4"
-                    className="w-full bg-dark-3 border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40 resize-none"
+                    className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40 resize-none"
                   />
                 </div>
                 <div>
                   <label className="block text-[10px] uppercase tracking-wider text-muted mb-1">Destination *</label>
                   <input
                     type="text" name="destination" value={form.destination} onChange={handleChange}
-                    className="w-full bg-dark-3 border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40"
+                    className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40"
                   />
                 </div>
                 <div>
@@ -1906,14 +2032,14 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
                   <input
                     type="text" name="duration" value={form.duration} onChange={handleChange}
                     placeholder="Ex: 1 jour, 8h..."
-                    className="w-full bg-dark-3 border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40"
+                    className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40"
                   />
                 </div>
                 <div>
                   <label className="block text-[10px] uppercase tracking-wider text-muted mb-1">Catégorie</label>
                   <select
                     name="category" value={form.category} onChange={handleChange}
-                    className="w-full bg-dark-3 border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40"
+                    className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40"
                   >
                     <option value="culture">Culture</option>
                     <option value="nature">Nature</option>
@@ -1928,21 +2054,21 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
                   <input
                     type="text" name="badge" value={form.badge} onChange={handleChange}
                     placeholder="Ex: Populaire"
-                    className="w-full bg-dark-3 border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40"
+                    className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40"
                   />
                 </div>
                 <div>
                   <label className="block text-[10px] uppercase tracking-wider text-muted mb-1">Prix par personne (€) *</label>
                   <input
                     type="number" min="0" name="pricePerPerson" value={form.pricePerPerson} onChange={handleChange}
-                    className="w-full bg-dark-3 border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40"
+                    className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40"
                   />
                 </div>
                 <div>
                   <label className="block text-[10px] uppercase tracking-wider text-muted mb-1">Capacité max</label>
                   <input
                     type="number" min="1" name="maxCapacity" value={form.maxCapacity} onChange={handleChange}
-                    className="w-full bg-dark-3 border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40"
+                    className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40"
                   />
                 </div>
 
@@ -1951,7 +2077,7 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
                   <label className="block text-[10px] uppercase tracking-wider text-muted mb-1">Image de couverture</label>
                   <div className="flex items-center gap-4">
                     <label className="flex-1 cursor-pointer">
-                      <div className="w-full bg-dark-3 border border-dashed border-white/20 hover:border-gold/40 rounded px-3 py-3 text-sm text-muted flex items-center gap-2 transition-colors">
+                      <div className="w-full bg-[#35354A] border border-dashed border-white/20 hover:border-gold/40 rounded px-3 py-3 text-sm text-muted flex items-center gap-2 transition-colors">
                         <FiImage size={16} className="text-gold" />
                         <span className="truncate">
                           {imageFile ? imageFile.name : 'Choisir une image depuis l’appareil…'}
@@ -1989,7 +2115,7 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
             </>
           )}
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
+          <div className="flex justify-end gap-3 pt-4 border-t border-white/10">
             <button
               type="button"
               onClick={onClose}
@@ -2029,7 +2155,7 @@ function NavLink({ onClick, icon, label, active, compact = false }) {
 function StatCard({ title, value, change, trend, icon }) {
   const trendColor = trend === 'up' ? 'text-green-400' : 'text-red-400';
   return (
-    <div className="bg-dark-2 border border-white/5 p-6">
+    <div className="bg-[#2A2A3C] border border-white/10 p-6">
       <div className="flex items-center justify-between mb-4">
         <div className="text-muted text-sm">{title}</div>
         <div className="text-gold text-xl">{icon}</div>
