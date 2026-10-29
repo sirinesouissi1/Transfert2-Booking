@@ -144,8 +144,8 @@ exports.getExcursion = asyncHandler(async (req, res) => {
 exports.createExcursion = asyncHandler(async (req, res) => {
   console.log('\n════════════════════════════════════════');
   console.log('📥 POST /api/excursions');
-  console.log('Body :', req.body);
-  console.log('File :', req.file ? { fieldname: req.file.fieldname, mimetype: req.file.mimetype, size: req.file.size } : null);
+  console.log('📥 Body reçu :', req.body);
+  console.log('📥 File reçu :', req.file ? `OUI (${req.file.fieldname}, ${req.file.size} octets)` : 'NON');
   console.log('════════════════════════════════════════\n');
 
   const excursionData = normalizeData({ ...req.body }, req.file);
