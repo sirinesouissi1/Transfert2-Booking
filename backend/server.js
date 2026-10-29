@@ -5,6 +5,7 @@ const morgan = require('morgan');
 const dotenv = require('dotenv');
 const path = require('path');
 const multer = require('multer');
+const ensureAdmin = require('./utils/ensureAdmin');
 
 dotenv.config();
 
@@ -153,15 +154,24 @@ app.use((err, req, res, next) => {
 });
 
 // ─── DB + Start ────────────────────────────────────────────────
+// ─── DB + Start ────────────────────────────────────────────────
 const PORT = process.env.PORT || 5002;
 
 mongoose
   .connect(process.env.MONGO_URI)
-  .then(() => {
+  .then(async () => {
     console.log('✅  MongoDB connecté');
+
+    try {
+      await ensureAdmin();
+    } catch (err) {
+      console.error('❌ ensureAdmin :', err.message);
+    }
+
     app.listen(PORT, () => console.log(`🚀  Serveur sur http://localhost:${PORT}`));
   })
   .catch((err) => {
     console.error('❌  Erreur MongoDB :', err.message);
     process.exit(1);
   });
+
