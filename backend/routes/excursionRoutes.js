@@ -11,7 +11,6 @@ router.get('/:id', getExcursion);
 
 router.delete('/:id', deleteExcursion);
 
-const uploadImage = require('../middleware/upload');
 router.post('/', uploadImage('coverImage'), createExcursion);
 router.put('/:id', uploadImage('coverImage'), updateExcursion);
 
