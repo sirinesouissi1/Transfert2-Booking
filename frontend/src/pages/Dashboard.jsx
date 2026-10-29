@@ -1372,6 +1372,11 @@ function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin }) {
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
 
+  // État local pour l'édition des listes inclus/exclus et itinéraire
+  const [includesStr, setIncludesStr] = useState((item?.includes || []).join('\n'));
+  const [excludesStr, setExcludesStr] = useState((item?.excludes || []).join('\n'));
+  const [itineraryArr, setItineraryArr] = useState(item?.itinerary || [{ time: '', title: '', description: '' }]);
+
   if (!item) return null;
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -1393,30 +1398,39 @@ function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin }) {
       return;
     }
 
-    // Véhicule ou excursion : construire un FormData si image
+    // Préparation des données pour véhicule ou excursion
+    const payload = { ...formData };
+    
+    if (resource === 'excursion') {
+      payload.includes = includesStr.split('\n').map(s => s.trim()).filter(Boolean);
+      payload.excludes = excludesStr.split('\n').map(s => s.trim()).filter(Boolean);
+      payload.itinerary = itineraryArr.filter(i => i.time || i.title || i.description);
+    }
+
     if ((resource === 'vehicle' || resource === 'excursion') && imageFile) {
       const fd = new FormData();
-      Object.entries(formData).forEach(([k, v]) => {
+      Object.entries(payload).forEach(([k, v]) => {
         if (k === '_id' || k === '__v' || k === 'image' || k === 'coverImage') return;
         if (k === 'createdAt' || k === 'updatedAt') return;
         if (v === undefined || v === null) return;
-        if (typeof v === 'object') return; // ignore nested
-        fd.append(k, String(v));
+        
+        // Si c'est un tableau ou un objet, on le stringifie (pour multer)
+        if (typeof v === 'object') {
+          fd.append(k, JSON.stringify(v));
+        } else {
+          fd.append(k, String(v));
+        }
       });
       fd.append(resource === 'vehicle' ? 'image' : 'coverImage', imageFile);
       onUpdate(resource, item._id, fd);
     } else {
-      // Pas de nouvelle image : envoyer le json (sans l'ancienne image base64)
-      const payload = { ...formData };
+      // Pas de nouvelle image : envoyer le json
       delete payload.image;
       delete payload.coverImage;
       delete payload.createdAt;
       delete payload.updatedAt;
-      // Convertir le prix véhicule en number ou null
       if (resource === 'vehicle' && 'price' in payload) {
-        payload.price = payload.price === '' || payload.price == null
-          ? null
-          : Number(payload.price);
+        payload.price = payload.price === '' || payload.price == null ? null : Number(payload.price);
       }
       onUpdate(resource, item._id, payload);
     }
@@ -1454,6 +1468,37 @@ function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin }) {
             <DetailSection title="Description" icon={<FiTag />}>
               <p className="px-4 py-3 text-sm text-cream/90 leading-relaxed">{item.description || '-'}</p>
             </DetailSection>
+            
+            {/* Détails ajoutés : Inclus / Exclus / Itinéraire */}
+            {item.itinerary && item.itinerary.length > 0 && (
+              <DetailSection title="Programme" icon={<FiClock />}>
+                {item.itinerary.map((step, idx) => (
+                  <DetailRow key={idx} label={step.time || '-'}>
+                    <div className="font-medium text-gold">{step.title}</div>
+                    <div className="text-xs text-cream/70 mt-1">{step.description}</div>
+                  </DetailRow>
+                ))}
+              </DetailSection>
+            )}
+            
+            {(item.includes?.length > 0 || item.excludes?.length > 0) && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {item.includes?.length > 0 && (
+                  <DetailSection title="Inclus" icon={<FiCheck />}>
+                    <div className="px-4 py-3 text-sm text-cream space-y-1">
+                      {item.includes.map((inc, i) => <div key={i}>✅ {inc}</div>)}
+                    </div>
+                  </DetailSection>
+                )}
+                {item.excludes?.length > 0 && (
+                  <DetailSection title="Non inclus" icon={<FiX />}>
+                    <div className="px-4 py-3 text-sm text-cream space-y-1">
+                      {item.excludes.map((exc, i) => <div key={i}>❌ {exc}</div>)}
+                    </div>
+                  </DetailSection>
+                )}
+              </div>
+            )}
           </div>
         );
 
@@ -1679,8 +1724,59 @@ function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin }) {
               className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-cream" />
           </div>
 
+          {/* Programme */}
+          <div className="mt-4">
+            <label className="block text-sm text-muted mb-1">Programme de la journée</label>
+            {itineraryArr.map((step, index) => (
+              <div key={index} className="flex gap-2 mb-2 items-start bg-[#35354A] p-2 rounded border border-white/10">
+                <input type="text" placeholder="Heure (ex: 08:00)" value={step.time}
+                  onChange={(e) => {
+                    const newArr = [...itineraryArr];
+                    newArr[index].time = e.target.value;
+                    setItineraryArr(newArr);
+                  }}
+                  className="w-20 bg-dark-3 border border-white/10 rounded px-2 py-1 text-sm text-cream focus:outline-none" />
+                <input type="text" placeholder="Titre (ex: Départ)" value={step.title}
+                  onChange={(e) => {
+                    const newArr = [...itineraryArr];
+                    newArr[index].title = e.target.value;
+                    setItineraryArr(newArr);
+                  }}
+                  className="flex-1 bg-dark-3 border border-white/10 rounded px-2 py-1 text-sm text-cream focus:outline-none" />
+                <input type="text" placeholder="Description" value={step.description}
+                  onChange={(e) => {
+                    const newArr = [...itineraryArr];
+                    newArr[index].description = e.target.value;
+                    setItineraryArr(newArr);
+                  }}
+                  className="flex-[2] bg-dark-3 border border-white/10 rounded px-2 py-1 text-sm text-cream focus:outline-none" />
+                <button type="button" onClick={() => setItineraryArr(itineraryArr.filter((_, i) => i !== index))}
+                  className="p-1 text-red-400 hover:text-red-300"><FiX size={16} /></button>
+              </div>
+            ))}
+            <button type="button" onClick={() => setItineraryArr([...itineraryArr, { time: '', title: '', description: '' }])}
+              className="text-xs text-gold hover:underline flex items-center gap-1">
+              <FiPlus size={12} /> Ajouter une étape
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 mt-4">
+            <div>
+              <label className="block text-sm text-muted mb-1">Inclus (un par ligne)</label>
+              <textarea value={includesStr} onChange={(e) => setIncludesStr(e.target.value)} rows="4"
+                placeholder="Ex:&#10;L'assurance&#10;Le transport"
+                className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none resize-none" />
+            </div>
+            <div>
+              <label className="block text-sm text-muted mb-1">Non inclus (un par ligne)</label>
+              <textarea value={excludesStr} onChange={(e) => setExcludesStr(e.target.value)} rows="4"
+                placeholder="Ex:&#10;Les repas&#10;Les droits d'entrée"
+                className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none resize-none" />
+            </div>
+          </div>
+
           {/* Image */}
-          <div>
+          <div className="mt-4">
             <label className="block text-sm text-muted mb-1">Image de couverture</label>
             <div className="flex items-center gap-4">
               <label className="flex-1 cursor-pointer">
@@ -1715,7 +1811,7 @@ function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin }) {
             </div>
           </div>
 
-          <div className="flex justify-end gap-3">
+          <div className="flex justify-end gap-3 mt-6">
             <button type="button" onClick={onClose} className="px-4 py-2 text-muted hover:text-cream">Annuler</button>
             <button type="submit" className="px-4 py-2 bg-gold text-dark-2 rounded">Enregistrer</button>
           </div>
@@ -1794,6 +1890,9 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
           maxCapacity: 10,
           minPersons: 1,
           isFeatured: false,
+          includes: '',
+          excludes: '',
+          itinerary: [{ time: '', title: '', description: '' }]
         }
   );
 
@@ -1875,6 +1974,16 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
         fd.append('minPersons', String(Number(form.minPersons) || 1));
         fd.append('isFeatured', String(form.isFeatured));
         fd.append('isActive', 'true');
+
+        // Préparation des listes et de l'itinéraire
+        const includesArray = form.includes.split('\n').map(s => s.trim()).filter(Boolean);
+        const excludesArray = form.excludes.split('\n').map(s => s.trim()).filter(Boolean);
+        const itineraryArray = form.itinerary.filter(item => item.time || item.title || item.description);
+
+        fd.append('includes', JSON.stringify(includesArray));
+        fd.append('excludes', JSON.stringify(excludesArray));
+        fd.append('itinerary', JSON.stringify(itineraryArray));
+
         if (imageFile) {
           fd.append('coverImage', imageFile);
         }
@@ -2072,8 +2181,62 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
                   />
                 </div>
 
+                {/* Programme */}
+                <div className="md:col-span-2 mt-2">
+                  <label className="block text-[10px] uppercase tracking-wider text-muted mb-2">Programme de la journée</label>
+                  {form.itinerary.map((step, index) => (
+                    <div key={index} className="flex gap-2 mb-2 items-start bg-[#35354A] p-2 rounded border border-white/10">
+                      <input type="text" placeholder="Heure (ex: 08:00)" value={step.time}
+                        onChange={(e) => {
+                          const newArr = [...form.itinerary];
+                          newArr[index].time = e.target.value;
+                          setForm({ ...form, itinerary: newArr });
+                        }}
+                        className="w-20 bg-dark-3 border border-white/10 rounded px-2 py-1 text-sm text-cream focus:outline-none" />
+                      <input type="text" placeholder="Titre (ex: Départ)" value={step.title}
+                        onChange={(e) => {
+                          const newArr = [...form.itinerary];
+                          newArr[index].title = e.target.value;
+                          setForm({ ...form, itinerary: newArr });
+                        }}
+                        className="flex-1 bg-dark-3 border border-white/10 rounded px-2 py-1 text-sm text-cream focus:outline-none" />
+                      <input type="text" placeholder="Description" value={step.description}
+                        onChange={(e) => {
+                          const newArr = [...form.itinerary];
+                          newArr[index].description = e.target.value;
+                          setForm({ ...form, itinerary: newArr });
+                        }}
+                        className="flex-[2] bg-dark-3 border border-white/10 rounded px-2 py-1 text-sm text-cream focus:outline-none" />
+                      <button type="button" onClick={() => setForm({ ...form, itinerary: form.itinerary.filter((_, i) => i !== index) })}
+                        className="p-1 text-red-400 hover:text-red-300"><FiX size={16} /></button>
+                    </div>
+                  ))}
+                  <button type="button" onClick={() => setForm({ ...form, itinerary: [...form.itinerary, { time: '', title: '', description: '' }] })}
+                    className="text-xs text-gold hover:underline flex items-center gap-1 mt-1">
+                    <FiPlus size={12} /> Ajouter une étape
+                  </button>
+                </div>
+
+                {/* Inclus / Exclus */}
+                <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-wider text-muted mb-1">Inclus (un par ligne)</label>
+                    <textarea name="includes" value={form.includes} onChange={handleChange} rows="4"
+                      placeholder="Ex:&#10;L'assurance&#10;Le carburant&#10;Le transport"
+                      className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40 resize-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-wider text-muted mb-1">Non inclus (un par ligne)</label>
+                    <textarea name="excludes" value={form.excludes} onChange={handleChange} rows="4"
+                      placeholder="Ex:&#10;Les repas&#10;Les dépenses d'ordre personnel"
+                      className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40 resize-none"
+                    />
+                  </div>
+                </div>
+
                 {/* Upload image excursion */}
-                <div className="md:col-span-2">
+                <div className="md:col-span-2 mt-2">
                   <label className="block text-[10px] uppercase tracking-wider text-muted mb-1">Image de couverture</label>
                   <div className="flex items-center gap-4">
                     <label className="flex-1 cursor-pointer">
@@ -2101,7 +2264,7 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
                   <p className="text-muted text-[10px] mt-1">JPG, PNG, WEBP — max 5 Mo</p>
                 </div>
 
-                <div className="md:col-span-2 flex items-center gap-2">
+                <div className="md:col-span-2 flex items-center gap-2 mt-2">
                   <input
                     type="checkbox" name="isFeatured" id="isFeatured"
                     checked={form.isFeatured} onChange={handleChange}
