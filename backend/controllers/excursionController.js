@@ -3,22 +3,18 @@ const asyncHandler = require('express-async-handler');
 const Excursion = require('../models/Excursion');
 
 // ─────────────────────────────────────────────────────────────────
-// HELPER : normalise une coverImage en "/uploads/xxx.jpg"
+// HELPER : normalise une coverImage
+// - laisse passer les data URI base64 et les URL absolues
+// - garde tel quel les anciens chemins "/uploads/xxx"
 // ─────────────────────────────────────────────────────────────────
 function normalizeCoverImage(value) {
   if (!value) return null;
-  let img = String(value).trim();
+  const img = String(value).trim();
 
-  // Si c'est déjà une URL absolue (http/https), on la garde telle quelle
   if (/^https?:\/\//i.test(img)) return img;
+  if (img.startsWith('data:image/')) return img;
 
-  // Retirer un éventuel préfixe "/uploads/" ou "uploads/" ou "/images/" ou "images/"
-  img = img.replace(/^\/?uploads\//i, '');
-  img = img.replace(/^\/?images\//i, '');
-  // Retirer un slash initial restant
-  img = img.replace(/^\/+/, '');
-
-  return `/uploads/${img}`;
+  return img;
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -53,28 +49,26 @@ function normalizeData(data, file) {
     }
   });
 
-  // ── Gestion de l'image principale ───────────────────────────
+  // ── Gestion de l'image principale (memoryStorage → base64) ──
   if (file) {
-    // Fichier uploadé via multer → stocké dans backend/images/
-    // ou backend/uploads/ selon votre config multer ; ici on suppose images/
-    data.coverImage = `/uploads/${file.filename}`;
-    console.log('🖼️  Image uploadée →', data.coverImage);
+    const base64 = file.buffer.toString('base64');
+    data.coverImage = `data:${file.mimetype};base64,${base64}`;
+    console.log('🖼️  Image uploadée (base64) — taille buffer:', file.size);
   } else if (data.coverImage) {
     data.coverImage = normalizeCoverImage(data.coverImage);
-    console.log('🖼️  Image via string →', data.coverImage);
+    console.log('🖼️  Image via string →', data.coverImage?.slice(0, 60) + '...');
   } else {
     console.log('⚠️  Aucune image fournie');
   }
 
   // ── Galerie d'images ────────────────────────────────────────
   if (data.images) {
-    // si envoyé en string JSON via multipart
     if (typeof data.images === 'string') {
       try { data.images = JSON.parse(data.images); } catch (_) { /* ignore */ }
     }
     if (Array.isArray(data.images)) {
       data.images = data.images.map(normalizeCoverImage).filter(Boolean);
-      console.log('🖼️  Galerie →', data.images);
+      console.log('🖼️  Galerie →', data.images.length, 'image(s)');
     }
   }
 
@@ -151,12 +145,15 @@ exports.createExcursion = asyncHandler(async (req, res) => {
   console.log('\n════════════════════════════════════════');
   console.log('📥 POST /api/excursions');
   console.log('Body :', req.body);
-  console.log('File :', req.file);
+  console.log('File :', req.file ? { fieldname: req.file.fieldname, mimetype: req.file.mimetype, size: req.file.size } : null);
   console.log('════════════════════════════════════════\n');
 
   const excursionData = normalizeData({ ...req.body }, req.file);
 
-  console.log('📦 Données finales avant create :', excursionData);
+  console.log('📦 Données finales avant create :', {
+    ...excursionData,
+    coverImage: excursionData.coverImage?.slice(0, 60) + '...',
+  });
 
   try {
     const excursion = await Excursion.create(excursionData);
@@ -181,11 +178,14 @@ exports.updateExcursion = asyncHandler(async (req, res) => {
   console.log('\n════════════════════════════════════════');
   console.log('📥 PUT /api/excursions/:id - id =', req.params.id);
   console.log('Body :', req.body);
-  console.log('File :', req.file);
+  console.log('File :', req.file ? { fieldname: req.file.fieldname, mimetype: req.file.mimetype, size: req.file.size } : null);
   console.log('════════════════════════════════════════\n');
 
   const updateData = normalizeData({ ...req.body }, req.file);
-  console.log('📦 Données finales avant update :', updateData);
+  console.log('📦 Données finales avant update :', {
+    ...updateData,
+    coverImage: updateData.coverImage?.slice(0, 60) + '...',
+  });
 
   try {
     const excursion = await Excursion.findByIdAndUpdate(

@@ -30,4 +30,4 @@ const uploadImage = (fieldName) => (req, res, next) => {
   });
 };
 
-module.exports = uploadImage;
+module.exports = uploadImage; // ← la factory
