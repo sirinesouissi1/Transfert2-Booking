@@ -25,6 +25,21 @@ const useAuthStore = create((set, get) => ({
     }
   },
 
+  adminLogin: async (credentials) => {
+    set({ loading: true, error: null });
+    try {
+      const { data } = await authAPI.adminLogin(credentials);
+      localStorage.setItem('lumina_token', data.token);
+      localStorage.setItem('lumina_user', JSON.stringify(data.user));
+      set({ user: data.user, token: data.token, loading: false });
+      return data;
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Identifiants admin incorrects';
+      set({ error: msg, loading: false });
+      throw new Error(msg);
+    }
+  },
+
   register: async (userData) => {
     set({ loading: true, error: null });
     try {
@@ -34,7 +49,7 @@ const useAuthStore = create((set, get) => ({
       set({ user: data.user, token: data.token, loading: false });
       return data;
     } catch (err) {
-      const msg = err.response?.data?.message || 'Erreur d\'inscription';
+      const msg = err.response?.data?.message || "Erreur d'inscription";
       set({ error: msg, loading: false });
       throw new Error(msg);
     }

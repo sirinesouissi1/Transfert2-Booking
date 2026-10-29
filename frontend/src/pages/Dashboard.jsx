@@ -62,7 +62,7 @@ const formatPrice = (value) => {
 export default function Dashboard() {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
-  const isAdmin = user?.role === 'user';
+const isAdmin = user?.role === 'admin';
 
   const [excursionBookings, setExcursionBookings] = useState([]);
   const [excursionBookingsAll, setExcursionBookingsAll] = useState([]);
@@ -187,7 +187,7 @@ export default function Dashboard() {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate('/admin/login');
   };
 
   const openViewModal = (resource, item) => {

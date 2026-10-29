@@ -175,7 +175,7 @@ export default function Navbar() {
             </div>
           ) : (
             <>
-              <Link to="/login" className="text-[11px] tracking-[2px] uppercase text-cream/70 hover:text-gold transition-colors">
+              <Link to="/admin/login" className="text-[11px] tracking-[2px] uppercase text-cream/70 hover:text-gold transition-colors">
                 {t.login}
               </Link>
               <Link to="#transferts" className="bg-gold hover:bg-gold-light text-dark px-6 py-2.5 text-[11px] uppercase tracking-widest font-bold transition-all transform hover:-translate-y-0.5">

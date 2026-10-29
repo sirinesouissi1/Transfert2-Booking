@@ -49,6 +49,11 @@ exports.login = asyncHandler(async (req, res) => {
     res.status(401);
     throw new Error('Email ou mot de passe incorrect');
   }
+  // ajoute juste après :
+if (user.role === 'admin') {
+  res.status(403);
+  throw new Error('Utilisez la connexion admin');
+}
 
   res.json({
     success: true,
@@ -99,4 +104,36 @@ exports.changePassword = asyncHandler(async (req, res) => {
   user.password = newPassword;
   await user.save();
   res.json({ success: true, message: 'Mot de passe mis à jour' });
+});
+
+// @desc   Connexion admin uniquement
+// @route  POST /api/auth/admin/login
+// @access Public
+exports.adminLogin = asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
+
+  const user = await User.findOne({ email: email?.toLowerCase() }).select('+password');
+
+  if (
+    !user ||
+    user.role !== 'admin' ||
+    user.email !== process.env.ADMIN_EMAIL.toLowerCase() ||
+    !(await user.matchPassword(password))
+  ) {
+    res.status(401);
+    throw new Error('Identifiants admin incorrects');
+  }
+
+  res.json({
+    success: true,
+    token: generateToken(user._id),
+    user: {
+      _id: user._id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      role: user.role,
+      avatar: user.avatar,
+    },
+  });
 });

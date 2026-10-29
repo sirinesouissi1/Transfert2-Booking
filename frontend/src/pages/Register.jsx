@@ -46,7 +46,7 @@ export default function Register() {
             to="/"
             className="font-serif text-4xl tracking-[8px] text-cream hover:text-gold transition-colors duration-300"
           >
-            LUMIN<span className="text-gold">A</span>
+             GO<span className="text-gold">TAXI</span>
           </Link>
           <p className="text-muted text-sm mt-3 font-light tracking-wide">
             Rejoignez l'expérience exclusive

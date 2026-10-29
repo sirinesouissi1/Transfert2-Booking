@@ -2,7 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import useAuthStore from './context/authStore';
-import { LanguageProvider } from './context/LanguageContext'; // Import the LanguageProvider
+import { LanguageProvider } from './context/LanguageContext';
 
 // Layout
 import Navbar from './components/layout/Navbar';
@@ -18,9 +18,6 @@ import BookingConfirm from './pages/BookingConfirm';
 import Login         from './pages/Login';
 import Register      from './pages/Register';
 import Dashboard     from './pages/Dashboard';
-import AdminDashboard from './pages/admin/AdminDashboard';
-import AdminBookings  from './pages/admin/AdminBookings';
-import AdminExcursions from './pages/admin/AdminExcursions';
 import NotFound      from './pages/NotFound';
 import SelectVehicle from './pages/SelectVehicle';
 import BookingDetails from './pages/BookingDetails';
@@ -29,8 +26,11 @@ import Confirmation from './pages/Confirmation';
 import ExcursionBooking from './pages/ExcursionBooking';
 import ExcursionBookingConfirmation from './pages/ExcursionBookingConfirmation';
 
-
+// Admin
+import AdminLogin from './pages/admin/AdminLogin';
 import AdminLayout from './pages/admin/AdminLayout';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminExcursions from './pages/admin/AdminExcursions';
 import AdminClients from './pages/admin/AdminClients';
 import AdminVehicules from './pages/admin/AdminVehicules';
 import AdminTransferts from './pages/admin/AdminTransferts';
@@ -44,14 +44,13 @@ const PrivateRoute = ({ children }) => {
 
 const AdminRoute = ({ children }) => {
   const user = useAuthStore((s) => s.user);
-  if (!user) return <Navigate to="/login" replace />;
-  if (user.role !== 'admin') return <Navigate to="/" replace />;
+  if (!user || user.role !== 'admin') return <Navigate to="/admin/login" replace />;
   return children;
 };
 
 export default function App() {
   return (
-    <LanguageProvider> {/* Wrap everything with LanguageProvider */}
+    <LanguageProvider>
       <BrowserRouter>
         <Toaster
           position="top-right"
@@ -70,11 +69,11 @@ export default function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/transferts/vehicules" element={<SelectVehicle />} />
           <Route path="/transferts/details" element={<BookingDetails />} />
-          <Route path="/confirmation" element={<Confirmation />} /> 
+          <Route path="/confirmation" element={<Confirmation />} />
 
           <Route path="/excursions/book/:id" element={<ExcursionBooking />} />
           <Route path="/excursions/booking-confirmation/:id" element={<ExcursionBookingConfirmation />} />
-          
+
           {/* Private */}
           <Route path="/booking/:type/:id" element={<PrivateRoute><WithLayout><BookingPage /></WithLayout></PrivateRoute>} />
           <Route path="/booking/confirm/:id" element={<PrivateRoute><WithLayout><BookingConfirm /></WithLayout></PrivateRoute>} />
@@ -82,10 +81,15 @@ export default function App() {
             path="/dashboard"
             element={
               <PrivateRoute>
-                <Dashboard />   
+                <Dashboard />
               </PrivateRoute>
             }
           />
+
+          {/* Admin login (public) */}
+          <Route path="/admin/login" element={<AdminLogin />} />
+
+          {/* Admin dashboard (protégé) */}
           <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
             <Route index element={<AdminDashboard />} />
             <Route path="clients" element={<AdminClients />} />
@@ -94,6 +98,7 @@ export default function App() {
             <Route path="reservations/transferts" element={<AdminTransferts />} />
             <Route path="reservations/excursions" element={<AdminExcursionBookings />} />
           </Route>
+
           <Route path="*" element={<WithLayout><NotFound /></WithLayout>} />
         </Routes>
       </BrowserRouter>

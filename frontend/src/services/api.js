@@ -1,33 +1,44 @@
 import axios from 'axios';
 
-// ✅ URL absolue vers le backend Render.
+// URL absolue vers le backend.
 // En prod : https://go-taxi-api.onrender.com/api
-// En dev  : http://localhost:5002/api  (grâce à .env.development)
-// ⚠️ On peut override via la variable d'env VITE_API_URL
+// En dev  : http://localhost:5002/api (via .env.development)
+// On peut override via la variable d'env VITE_API_URL
 const API_BASE_URL =
   import.meta.env.VITE_API_URL || 'https://go-taxi-api.onrender.com/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  // ⚠️ NE PAS définir 'Content-Type' ici :
+  // NE PAS définir 'Content-Type' ici :
   // axios choisit automatiquement application/json ou multipart/form-data
 });
 
 // Attacher automatiquement le token JWT
 api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('lumina_token');
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+
   if (config.data instanceof FormData) {
     delete config.headers['Content-Type']; // le navigateur met multipart + boundary
   }
   return config;
 });
 
-// Gérer les erreurs 401 (non autorisé) globalement
+// Gérer les erreurs 401 globalement
 api.interceptors.response.use(
   (res) => res,
   (err) => {
-    if (err.response?.status === 401) {
+    const url = err.config?.url || '';
+    const isLoginRequest =
+      url.includes('/auth/login') || url.includes('/auth/admin/login');
+
+    // On ne redirige pas si c'est un simple échec de connexion :
+    // le formulaire affiche déjà le toast d'erreur
+    if (err.response?.status === 401 && !isLoginRequest) {
       localStorage.removeItem('lumina_token');
-      window.location.href = '/login';
+      localStorage.removeItem('lumina_user');
+      const isAdminPage = window.location.pathname.startsWith('/admin');
+      window.location.href = isAdminPage ? '/admin/login' : '/login';
     }
     return Promise.reject(err);
   }
@@ -35,8 +46,9 @@ api.interceptors.response.use(
 
 // ─── Authentification ─────────────────────────────────────────────────────────
 export const authAPI = {
-  register:       (data) => api.post('/auth/register', data),
   login:          (data) => api.post('/auth/login', data),
+  register:       (data) => api.post('/auth/register', data),
+  adminLogin:     (data) => api.post('/auth/admin/login', data),
   getMe:          ()     => api.get('/auth/me'),
   updateMe:       (data) => api.put('/auth/me', data),
   changePassword: (data) => api.put('/auth/change-password', data),
@@ -74,10 +86,7 @@ export const transferAPI = {
 export const vehicleAPI = {
   getAll: ()   => api.get('/vehicles'),
   getOne: (id) => api.get(`/vehicles/${id}`),
-
-  // ✅ Accepte indifféremment un objet JS (JSON) ou un FormData (upload image)
-  // axios détecte le type et gère le Content-Type automatiquement
-  create: (payload) => api.post('/vehicles', payload),
+  create: (payload)     => api.post('/vehicles', payload),
   update: (id, payload) => api.put(`/vehicles/${id}`, payload),
   delete: (id) => api.delete(`/vehicles/${id}`),
 };
