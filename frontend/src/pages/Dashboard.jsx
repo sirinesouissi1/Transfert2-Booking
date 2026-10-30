@@ -9,7 +9,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { bookingAPI, vehicleAPI, excursionAPI, excursionBookingAPI , contactAPI} from '../services/api';
 import useAuthStore from '../context/authStore';
 import {
-  FiDollarSign ,
   FiAlertTriangle,
   FiMail,
   FiMenu ,
