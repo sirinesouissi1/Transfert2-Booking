@@ -9,6 +9,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { bookingAPI, vehicleAPI, excursionAPI, excursionBookingAPI , contactAPI} from '../services/api';
 import useAuthStore from '../context/authStore';
 import {
+  FiDollarSign ,
+  FiAlertTriangle,
   FiMail,
   FiMenu ,
   FiHome,
@@ -277,6 +279,22 @@ const isAdmin = user?.role === 'admin';
 
  const [contacts, setContacts] = useState([]);
   const [unreadContacts, setUnreadContacts] = useState(0);
+
+  // État pour le modal de confirmation
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: null,
+  });
+
+  const askConfirmation = (title, message, action) => {
+    setConfirmModal({ isOpen: true, title, message, onConfirm: action });
+  };
+
+  const closeConfirmModal = () => {
+    setConfirmModal({ isOpen: false, title: '', message: '', onConfirm: null });
+  };
 
   return (
     <div className="flex h-screen bg-[#1F1F2E] text-cream">
@@ -755,11 +773,16 @@ const isAdmin = user?.role === 'admin';
                           </button>
                         )}
                         <button 
-                          onClick={async () => {
-                            if (window.confirm('Supprimer ce message ?')) {
-                              await contactAPI.delete(c._id);
-                              fetchData();
-                            }
+                          onClick={() => {
+                            askConfirmation(
+                              'Supprimer le message',
+                              'Voulez-vous vraiment supprimer ce message de contact ?',
+                              async () => {
+                                await contactAPI.delete(c._id);
+                                fetchData();
+                                closeConfirmModal();
+                              }
+                            );
                           }}
                           className="text-xs bg-red-500/20 text-red-400 border border-red-500/30 px-3 py-1.5 rounded hover:bg-red-500/30 font-medium"
                         >
@@ -974,15 +997,29 @@ function VehicleDestinationPricing({ vehicle, isAdmin, onBack }) {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Supprimer ce tarif ?')) return;
-    try {
-      await fetch(`${API_URL}/prices/${id}`, { method: 'DELETE' });
-      await fetchPrices();
-      showSuccess('Tarif supprimé.');
-    } catch (err) {
-      console.error(err);
-    }
+  const handleDelete = (resource, id) => {
+    askConfirmation(
+      'Confirmer la suppression',
+      'Voulez-vous vraiment supprimer cet élément ? Cette action est irréversible.',
+      async () => {
+        try {
+          if (resource === 'vehicle') {
+            await vehicleAPI.delete(id);
+          } else if (resource === 'excursion') {
+            await excursionAPI.delete(id);
+          } else if (resource === 'transfer') {
+            await bookingAPI.updateStatus(id, { status: 'cancelled' });
+          } else if (resource === 'excursionBooking') {
+            await excursionAPI.updateBookingStatus(id, { status: 'cancelled' });
+          }
+          fetchData();
+        } catch (err) {
+          setError(`Erreur lors de la suppression : ${err.response?.data?.message || err.message}`);
+        } finally {
+          closeConfirmModal();
+        }
+      }
+    );
   };
 
   const TRIP_LABELS = { one_way: 'Aller simple', round_trip: 'Aller-retour' };
@@ -2009,12 +2046,12 @@ function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin }) {
 function CreateResourceModal({ resource, onClose, onCreated }) {
   const isVehicle = resource === 'vehicle';
 
-  const [form, setForm] = useState(
+   const [form, setForm] = useState(
     isVehicle
       ? {
           name: '',
           description: '',
-          price: '',          // optionnel → sur demande
+          price: '',
           capacity: '',
         }
       : {
@@ -2031,10 +2068,15 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
           isFeatured: false,
           includes: '',
           excludes: '',
-          itinerary: [{ time: '', title: '', description: '' }]
+          itinerary: [{ time: '', title: '', description: '' }],
+          // ⬇️ NOUVEAU : prix par point de départ
+          departurePrices: {
+            Hammamet: { "4": '', "6": '', "8": '' },
+            Sousse:   { "4": '', "6": '', "8": '' },
+            Tunis:    { "4": '', "6": '', "8": '' },
+          },
         }
   );
-
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -2123,6 +2165,22 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
         fd.append('excludes', JSON.stringify(excludesArray));
         fd.append('itinerary', JSON.stringify(itineraryArray));
 
+        if (imageFile) {
+          fd.append('coverImage', imageFile);
+        }
+                // ⬇️ AJOUT : Nettoyer et envoyer les prix par point de départ
+        const cleanedDeparturePrices = {};
+        Object.entries(form.departurePrices || {}).forEach(([city, prices]) => {
+          const cleaned = {};
+          Object.entries(prices).forEach(([size, price]) => {
+            if (price && Number(price) > 0) cleaned[size] = Number(price);
+          });
+          if (Object.keys(cleaned).length > 0) cleanedDeparturePrices[city] = cleaned;
+        });
+
+        fd.append('departurePrices', JSON.stringify(cleanedDeparturePrices));
+
+        // (Ce code existait déjà ↓)
         if (imageFile) {
           fd.append('coverImage', imageFile);
         }
@@ -2319,7 +2377,46 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
                     className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40"
                   />
                 </div>
-
+                {/* ⬇️ NOUVEAU : Tarifs par point de départ */}
+                <div className="md:col-span-2 mt-4 bg-[#35354A]/50 p-4 rounded border border-gold/20">
+                  <h4 className="text-sm text-gold mb-3 flex items-center gap-2">
+                    <FiDollarSign size={14}/> Prix par point de départ et taille de groupe (€)
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {['Hammamet', 'Sousse', 'Tunis'].map((city) => (
+                      <div key={city} className="space-y-2 bg-[#2A2A3C] p-3 rounded border border-white/5">
+                        <p className="text-xs uppercase tracking-wider text-gold font-medium">{city}</p>
+                        {['4', '6', '8'].map((size) => (
+                          <div key={size} className="flex items-center gap-2">
+                            <span className="text-xs text-cream/70 w-14">{size} pers. :</span>
+                            <input
+                              type="number"
+                              min="0"
+                              value={form.departurePrices?.[city]?.[size] || ''}
+                              onChange={(e) => {
+                                setForm(prev => ({
+                                  ...prev,
+                                  departurePrices: {
+                                    ...(prev.departurePrices || {}),
+                                    [city]: {
+                                      ...((prev.departurePrices && prev.departurePrices[city]) || {}),
+                                      [size]: e.target.value
+                                    }
+                                  }
+                                }));
+                              }}
+                              placeholder="0"
+                              className="w-20 bg-dark-3 border border-white/10 rounded px-2 py-1 text-sm text-cream focus:outline-none focus:border-gold/40"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-muted mt-2 italic">
+                    Laisser vide = "Sur demande" pour cette combinaison.
+                  </p>
+                </div>
                 {/* Programme */}
                 <div className="md:col-span-2 mt-2">
                   <label className="block text-[10px] uppercase tracking-wider text-muted mb-2">Programme de la journée</label>
@@ -2465,6 +2562,54 @@ function StatCard({ title, value, change, trend, icon }) {
       <div className="flex items-end justify-between">
         <div className="text-3xl font-light text-cream">{value}</div>
         <div className={`text-sm ${trendColor}`}>{change}</div>
+      </div>
+    </div>
+  );
+}
+
+// ------------------------------------------------------------------
+// Modal de Confirmation Personnalisé (Remplace window.confirm)
+// ------------------------------------------------------------------
+function ConfirmModal({ isOpen, title, message, onConfirm, onCancel, isDanger = true }) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-fade-in">
+      <div 
+        className="bg-[#2A2A3C] border border-white/10 rounded-xl shadow-2xl max-w-md w-full p-6 animate-scale-in"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex flex-col items-center text-center space-y-4">
+          <div className={`w-16 h-16 rounded-full flex items-center justify-center ${isDanger ? 'bg-red-500/10 text-red-400' : 'bg-gold/10 text-gold'}`}>
+            <FiAlertTriangle size={32} />
+          </div>
+          
+          <div>
+            <h3 className="text-xl font-serif text-cream">{title || 'Confirmer la suppression'}</h3>
+            <p className="text-muted text-sm mt-2">
+              {message || 'Êtes-vous sûr de vouloir effectuer cette action ? Cette opération est irréversible.'}
+            </p>
+          </div>
+
+          <div className="flex gap-3 w-full pt-4">
+            <button
+              onClick={onCancel}
+              className="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium bg-white/5 text-cream hover:bg-white/10 transition-colors"
+            >
+              Annuler
+            </button>
+            <button
+              onClick={onConfirm}
+              className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                isDanger 
+                  ? 'bg-red-500 text-white hover:bg-red-600 shadow-lg shadow-red-500/20' 
+                  : 'bg-gold text-dark-2 hover:bg-gold/90 shadow-lg shadow-gold/20'
+              }`}
+            >
+              Confirmer
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

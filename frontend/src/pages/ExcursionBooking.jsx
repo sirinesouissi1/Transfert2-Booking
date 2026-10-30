@@ -289,50 +289,58 @@ export default function ExcursionBooking() {
   const [submitting, setSubmitting] = useState(false);
   const [price, setPrice] = useState(0);
 
- useEffect(() => {
-  const fetchExcursion = async () => {
-    try {
-      const response = await excursionAPI.getOne(id);
-      if (response.data?.success) {
-        const excursionData = response.data.excursion;
-        setExcursion(excursionData);
-
-        // ── Normalisation de groupPrices (Map Mongoose → objet JS) ──
-        const rawGroupPrices = excursionData.groupPrices || {};
-        const groupPrices =
-          rawGroupPrices instanceof Map
-            ? Object.fromEntries(rawGroupPrices)
-            : rawGroupPrices;
-
-        // Prix pour la taille de groupe par défaut (4)
-        const defaultGroupSize = bookingData.groupSize;
-        const initialPrice = Number(groupPrices[defaultGroupSize] || 0);
-        setPrice(initialPrice);
+  useEffect(() => {
+    const fetchExcursion = async () => {
+      try {
+        const response = await excursionAPI.getOne(id);
+        if (response.data?.success) {
+          setExcursion(response.data.excursion);
+        }
+      } catch (error) {
+        console.error('Erreur chargement excursion', error);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('Erreur chargement excursion', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-  fetchExcursion();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [id]);
+    };
+    fetchExcursion();
+  }, [id]);
 
   // Mise à jour du prix lorsque la taille du groupe change
-useEffect(() => {
-  if (!excursion) return;
+  // Calcul du prix selon le point de départ ET la taille du groupe
+  useEffect(() => {
+    if (!excursion) return;
 
-  // Normalisation au cas où groupPrices serait une Map Mongoose
-  const rawGroupPrices = excursion.groupPrices || {};
-  const groupPrices =
-    rawGroupPrices instanceof Map
-      ? Object.fromEntries(rawGroupPrices)
-      : rawGroupPrices;
+    // 1. Cherche le prix dans departurePrices (nouveau système)
+    const rawDeparturePrices = excursion.departurePrices || {};
+    const departurePrices =
+      rawDeparturePrices instanceof Map
+        ? Object.fromEntries(rawDeparturePrices)
+        : rawDeparturePrices;
 
-  const newPrice = groupPrices[bookingData.groupSize];
-  setPrice(newPrice !== undefined ? Number(newPrice) : 0);
-}, [bookingData.groupSize, excursion]);
+    const cityPrices = departurePrices[bookingData.departurePoint];
+    const cityPrice = cityPrices?.[bookingData.groupSize];
+
+    if (cityPrice !== undefined && cityPrice !== null && Number(cityPrice) > 0) {
+      setPrice(Number(cityPrice));
+      return;
+    }
+
+    // 2. Fallback : ancien groupPrices
+    const rawGroupPrices = excursion.groupPrices || {};
+    const groupPrices =
+      rawGroupPrices instanceof Map
+        ? Object.fromEntries(rawGroupPrices)
+        : rawGroupPrices;
+
+    const fallbackPrice = groupPrices[bookingData.groupSize];
+    if (fallbackPrice !== undefined) {
+      setPrice(Number(fallbackPrice));
+      return;
+    }
+
+    // 3. Sinon → 0 (affichera "Sur demande")
+    setPrice(0);
+  }, [bookingData.groupSize, bookingData.departurePoint, excursion]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -444,10 +452,12 @@ useEffect(() => {
                 <p className="font-serif text-xl text-white">{excursion?.name}</p>
               </div>
 
-              <div className="bg-gold text-dark p-4 flex justify-between items-center font-bold mb-8">
-                <span className="text-[10px] uppercase tracking-widest">Prix Total</span>
-                <span className="text-2xl font-serif">€{price}</span>
-              </div>
+                  <div className="bg-gold text-dark p-4 flex justify-between items-center font-bold mb-8">
+                  <span className="text-[10px] uppercase tracking-widest">Prix Total</span>
+                  <span className="text-2xl font-serif">
+                    {price > 0 ? `€${price}` : 'Sur demande'}
+                  </span>
+                </div>
 
               <div className="space-y-6">
                 <JourneyStep

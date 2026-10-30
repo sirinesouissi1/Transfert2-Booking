@@ -37,6 +37,8 @@ function normalizeData(data, file) {
     'highlights',
     'departurePoints',
     'groupPrices',
+    'departurePrices', // ⬅️ AJOUTER
+
   ];
   jsonFields.forEach((field) => {
     if (data[field] && typeof data[field] === 'string') {

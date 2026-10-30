@@ -7,17 +7,31 @@ const excursionSchema = new mongoose.Schema(
     description: { type: String, required: true },
     shortDesc:   { type: String },
     destination: { type: String, required: true },
-    duration:    { type: String, required: true },   // ex: "8h", "2 jours"
+    duration:    { type: String, required: true },
     maxCapacity: { type: Number, default: 10 },
     minPersons:  { type: Number, default: 1 },
     pricePerPerson: { type: Number, required: true },
-    priceGroup:  { type: Number },                   // prix pour groupe
-    groupPrices: {                            // NOUVEAU : prix fixes par taille de groupe
-    type: Map,
-    of: Number,
-    default: {},
-    description: "Prix par taille de groupe (ex: { '4': 160, '6': 220, '8': 280 })"
-  },
+    priceGroup:  { type: Number },
+    
+    // Ancien système (prix par groupe uniquement)
+    groupPrices: {
+      type: Map,
+      of: Number,
+      default: {},
+    },
+
+    // ⬇️ NOUVEAU : Prix par point de départ + taille de groupe
+    // Ex: { "Hammamet": { "4": 80, "6": 120 }, "Sousse": { "4": 130 } }
+    departurePrices: {
+      type: Map,
+      of: new mongoose.Schema({
+        "4": { type: Number, default: 0 },
+        "6": { type: Number, default: 0 },
+        "8": { type: Number, default: 0 },
+      }, { _id: false }),
+      default: {},
+    },
+
     coverImage:  { type: String, },
     itinerary: [
       {
@@ -26,12 +40,11 @@ const excursionSchema = new mongoose.Schema(
         description: String,
       }
     ],
-    
     includes:    [{ type: String }],
     excludes:    [{ type: String }],
     highlights:  [{ type: String }],
     category:    { type: String, enum: ['culture', 'nature', 'desert', 'beach', 'city', 'roman'], default: 'culture' },
-    badge:       { type: String },                   // ex: "Populaire", "Coup de coeur"
+    badge:       { type: String },
     rating:      { type: Number, default: 0 },
     numReviews:  { type: Number, default: 0 },
     isActive:    { type: Boolean, default: true },

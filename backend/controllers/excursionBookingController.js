@@ -10,7 +10,7 @@ const {
 // @access  Public
 // controllers/excursionBookingController.js
 exports.createExcursionBooking = asyncHandler(async (req, res) => {
-  const { excursion: excursionId, groupSize } = req.body;
+  const { excursion: excursionId, groupSize, departurePoint } = req.body;
 
   const excursion = await Excursion.findOne({ _id: excursionId, isActive: true });
   if (!excursion) {
@@ -18,28 +18,53 @@ exports.createExcursionBooking = asyncHandler(async (req, res) => {
     throw new Error('Excursion non trouvée ou indisponible');
   }
 
-  // Vérifier que la taille de groupe est valide
   const groupSizeNumber = parseInt(groupSize, 10);
   if (isNaN(groupSizeNumber) || groupSizeNumber <= 0) {
     res.status(400);
     throw new Error('Taille de groupe invalide');
   }
 
-  // Récupérer le prix pour cette taille de groupe
   let price = null;
-  if (excursion.groupPrices && excursion.groupPrices.get(groupSize)) {
-    price = excursion.groupPrices.get(groupSize);
-  } else if (excursion.priceGroup && groupSizeNumber <= excursion.maxCapacity) {
-    // Fallback : utiliser priceGroup comme prix unique
-    price = excursion.priceGroup;
-  } else {
-    // Dernier recours (à éviter)
-    price = (excursion.pricePerPerson || 0) * groupSizeNumber;
+
+  // ── 1. On cherche le prix par point de départ (Nouveau système) ──
+  if (excursion.departurePrices && departurePoint) {
+    const rawDeparturePrices = excursion.departurePrices instanceof Map
+      ? Object.fromEntries(excursion.departurePrices)
+      : excursion.departurePrices;
+
+    const cityPrices = rawDeparturePrices[departurePoint];
+    
+    if (cityPrices && cityPrices[groupSize]) {
+      price = Number(cityPrices[groupSize]);
+      console.log(`💰 Prix trouvé dans departurePrices[${departurePoint}][${groupSize}] = ${price}€`);
+    }
   }
 
-  if (!price) {
+  // ── 2. Fallback : ancien système groupPrices ──
+  if (price === null && excursion.groupPrices) {
+    const rawGroupPrices = excursion.groupPrices instanceof Map
+      ? Object.fromEntries(excursion.groupPrices)
+      : excursion.groupPrices;
+    
+    if (rawGroupPrices[groupSize] !== undefined) {
+      price = Number(rawGroupPrices[groupSize]);
+      console.log(`💰 Prix trouvé dans groupPrices[${groupSize}] = ${price}€`);
+    }
+  }
+
+  // ── 3. Dernier recours : priceGroup ou pricePerPerson ──
+  if (price === null) {
+    if (excursion.priceGroup) {
+      price = Number(excursion.priceGroup);
+    } else {
+      price = (Number(excursion.pricePerPerson) || 0) * groupSizeNumber;
+    }
+    console.log(`💰 Prix fallback = ${price}€`);
+  }
+
+  if (!price || price <= 0) {
     res.status(400);
-    throw new Error('Prix non défini pour cette taille de groupe');
+    throw new Error('Prix non défini pour cette combinaison');
   }
 
   const bookingData = {
