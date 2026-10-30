@@ -6,9 +6,10 @@ import {
 import { getImageUrl } from '../utils/imageUrl';
 import BookingCalendar from '../pages/BookingCalendar';
 import { Link, useNavigate } from 'react-router-dom';
-import { bookingAPI, vehicleAPI, excursionAPI, excursionBookingAPI } from '../services/api';
+import { bookingAPI, vehicleAPI, excursionAPI, excursionBookingAPI , contactAPI} from '../services/api';
 import useAuthStore from '../context/authStore';
 import {
+  FiMail,
   FiMenu ,
   FiHome,
   FiUsers,
@@ -170,12 +171,18 @@ const isAdmin = user?.role === 'admin';
         const excursionsRes = await excursionAPI.getAll({ limit: 100 });
         setExcursions(excursionsRes.data.excursions || []);
 
-        const allExcursionBookings = await excursionBookingAPI.getAll();
+               const allExcursionBookings = await excursionBookingAPI.getAll();
         setExcursionBookingsAll(allExcursionBookings.data.bookings || []);
 
         if (currentView === 'excursionBookings') {
           setExcursionBookings(allExcursionBookings.data.bookings || []);
         }
+
+        // ⬇️ AJOUT POUR LES CONTACTS
+        const contactsRes = await contactAPI.getAll();
+        const contactsData = contactsRes.data.messages || [];
+        setContacts(contactsData);
+        setUnreadContacts(contactsData.filter(c => !c.isRead).length);
       }
     } catch (err) {
       console.error('Erreur chargement données:', err);
@@ -267,6 +274,9 @@ const isAdmin = user?.role === 'admin';
   const completedBookings = bookings.filter((b) => b.status === 'completed').length;
 
   const isActive = (view) => currentView === view;
+
+ const [contacts, setContacts] = useState([]);
+  const [unreadContacts, setUnreadContacts] = useState(0);
 
   return (
     <div className="flex h-screen bg-[#1F1F2E] text-cream">
@@ -366,6 +376,22 @@ const isAdmin = user?.role === 'admin';
           />
         </nav>
 
+          <NavLink
+            onClick={() => { setCurrentView('messages'); setMobileMenuOpen(false); }}
+            icon={<FiMail />}
+            label={
+              <span className="flex items-center justify-between w-full">
+                Messages
+                {unreadContacts > 0 && (
+                  <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full ml-2">
+                    {unreadContacts}
+                  </span>
+                )}
+              </span>
+            }
+            active={isActive('messages')}
+          />
+
           <div className="p-4 border-t border-white/10">
           <button
             onClick={handleLogout}
@@ -416,9 +442,25 @@ const isAdmin = user?.role === 'admin';
 
         {/* Contenu défilable */}
         <div className="p-4 md:p-8 overflow-y-auto flex-1">
-          {error && (
+                   {error && (
             <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 text-red-400 rounded">
               {error}
+            </div>
+          )}
+
+          {/* ⬇️ ALERTE NOTIFICATION */}
+          {unreadContacts > 0 && currentView === 'dashboard' && (
+            <div className="mb-6 p-4 bg-gold/10 border border-gold/30 text-gold rounded flex items-center justify-between animate-fade-in">
+              <div className="flex items-center gap-3">
+                <FiMail size={20} />
+                <span>Vous avez <strong>{unreadContacts}</strong> nouveau(x) message(s) de contact non lu(s).</span>
+              </div>
+              <button 
+                onClick={() => setCurrentView('messages')}
+                className="bg-gold text-dark-2 px-3 py-1 rounded text-xs font-medium hover:bg-gold/90 whitespace-nowrap"
+              >
+                Voir les messages
+              </button>
             </div>
           )}
 
@@ -656,7 +698,7 @@ const isAdmin = user?.role === 'admin';
             />
           )}
 
-          {currentView === 'calendar' && (
+                   {currentView === 'calendar' && (
             <BookingCalendar
               bookings={bookings}
               excursionBookings={excursionBookingsAll}
@@ -664,6 +706,71 @@ const isAdmin = user?.role === 'admin';
               excursions={excursions}
               onRefresh={fetchData}
             />
+          )}
+
+          {/* ⬇️ AJOUT DE LA VUE MESSAGES */}
+          {currentView === 'messages' && (
+            <div className="bg-[#2A2A3C] border border-white/10 rounded-lg p-6">
+              <h1 className="text-2xl font-serif mb-6 flex items-center gap-3">
+                <FiMail className="text-gold" /> Messages reçus
+              </h1>
+              
+              {contacts.length === 0 ? (
+                <p className="text-muted">Aucun message pour le moment.</p>
+              ) : (
+                <div className="space-y-4">
+                  {contacts.map((c) => (
+                    <div 
+                      key={c._id} 
+                      className={`p-4 border rounded-lg transition-all ${
+                        c.isRead ? 'bg-[#35354A]/50 border-white/10' : 'bg-[#35354A] border-gold/30 shadow-lg shadow-gold/5'
+                      }`}
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <h3 className={`text-lg font-medium ${c.isRead ? 'text-cream/70' : 'text-gold'}`}>
+                            {c.subject || 'Sans sujet'}
+                          </h3>
+                          <p className="text-sm text-muted">
+                            De : <span className="text-cream">{c.name}</span> ({c.email})
+                            {c.phone && <span> · {c.phone}</span>}
+                          </p>
+                        </div>
+                        <span className="text-xs text-muted">
+                          {new Date(c.createdAt).toLocaleString('fr-FR')}
+                        </span>
+                      </div>
+                      <p className="text-sm text-cream/90 whitespace-pre-wrap mt-3 mb-4">{c.message}</p>
+                      
+                      <div className="flex justify-end gap-2">
+                        {!c.isRead && (
+                          <button 
+                            onClick={async () => {
+                              await contactAPI.markRead(c._id);
+                              fetchData(); // Rafraîchit la liste
+                            }}
+                            className="text-xs bg-gold text-dark-2 px-3 py-1.5 rounded hover:bg-gold/90 font-medium"
+                          >
+                            Marquer comme lu
+                          </button>
+                        )}
+                        <button 
+                          onClick={async () => {
+                            if (window.confirm('Supprimer ce message ?')) {
+                              await contactAPI.delete(c._id);
+                              fetchData();
+                            }
+                          }}
+                          className="text-xs bg-red-500/20 text-red-400 border border-red-500/30 px-3 py-1.5 rounded hover:bg-red-500/30 font-medium"
+                        >
+                          Supprimer
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
         </div>
       </main>

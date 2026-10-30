@@ -3,18 +3,18 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   MapPin, Calendar, Users, ArrowRight, ChevronDown, Plane, 
   ShieldCheck, Clock, Star, Wifi, Car, CreditCard, Mail, Phone,
-  Globe
+  Globe, Loader2, CheckCircle2, AlertCircle
 } from 'lucide-react';
 
 // Importation des composants globaux
 import Navbar from '../components/layout/Navbar'; 
 import Footer from '../components/layout/Footer';
 import { useLanguage } from '../context/LanguageContext';
+import { contactAPI } from '../services/api'; // <-- AJOUT DE L'API
 
 // Translations
 const translations = {
   fr: {
-    // Hero
     heroTitle: "L'art de",
     heroTitleEm: "voyager",
     heroTitleEnd: "en Tunisie",
@@ -28,16 +28,12 @@ const translations = {
     returnDate: "Date de Retour",
     checkPrices: "Vérifier les tarifs",
     enterLocation: "Saisir lieu...",
-    
-    // Features
     premiumVehicles: "Véhicules Premium",
     premiumDesc: "Une flotte moderne et luxueuse pour un confort absolu durant vos trajets.",
     certifiedDrivers: "Chauffeurs Certifiés",
     certifiedDesc: "Des professionnels ponctuels et bilingues à votre entière disposition.",
     fixedPrices: "Prix Fixes",
     fixedDesc: "Aucun frais caché. Le tarif est fixé lors de votre réservation.",
-    
-    // About
     whoWeAre: "Qui sommes-nous",
     aboutTitle: "Votre Partenaire de Transport",
     aboutTitleGold: "de Confiance",
@@ -45,16 +41,12 @@ const translations = {
     aboutP2: "Ensemble, ils cumulent plus d'une décennie d'expérience dans le transport et l'hospitalité. Cette équipe d'individus éduqués, dynamiques et éco-responsables s'engage à proposer des solutions de transport privé à la fois économiques et respectueuses de l'environnement.",
     aboutFooter: "Service 24h/24 et 7j/7 vers tous les aéroports.",
     yearsExperience: "Ans d'expérience",
-    
-    // Services
     ourServices: "Nos Services",
     airportTransfers: "Transferts Aéroport",
     airportDesc: "Services disponibles 24h/24 dans tous les principaux aéroports tunisiens : Tunis Carthage, Enfidha, Monastir et Sfax. Prix fixes garantis.",
     excursions: "Excursions Personnalisées",
     excursionsDesc: "Découvrez la Tunisie avec nos services sur mesure. Des sites historiques aux aventures désertiques, nous créons vos voyages mémorables.",
     learnMore: "En Savoir Plus",
-    
-    // Why Choose
     whyChoose: "Pourquoi Choisir",
     whyChooseGold: "GoTaxi",
     safety: "La Sécurité Avant Tout",
@@ -65,8 +57,6 @@ const translations = {
     professionalDrivers: "Chauffeurs Professionnels",
     comfortableTrips: "Trajets Confortables",
     securePayment: "Paiement Sécurisé",
-    
-    // Contact
     contactUs: "Contactez-Nous",
     contactDesc: "Une question ou une demande spécifique ? Notre équipe est à votre écoute 24h/24.",
     fullName: "Nom complet",
@@ -75,10 +65,12 @@ const translations = {
     message: "Votre message",
     send: "Envoyer le message",
     callUs: "Appelez-nous",
-    emailUs: "Email"
+    emailUs: "Email",
+    sending: "Envoi en cours...",
+    sent: "Message envoyé avec succès !",
+    error: "Erreur lors de l'envoi du message."
   },
   en: {
-    // Hero
     heroTitle: "The art of",
     heroTitleEm: "traveling",
     heroTitleEnd: "in Tunisia",
@@ -92,16 +84,12 @@ const translations = {
     returnDate: "Return Date",
     checkPrices: "Check Prices",
     enterLocation: "Enter location...",
-    
-    // Features
     premiumVehicles: "Premium Vehicles",
     premiumDesc: "A modern and luxurious fleet for absolute comfort during your journeys.",
     certifiedDrivers: "Certified Drivers",
     certifiedDesc: "Punctual and bilingual professionals at your complete disposal.",
     fixedPrices: "Fixed Prices",
     fixedDesc: "No hidden fees. The price is set when you book.",
-    
-    // About
     whoWeAre: "Who We Are",
     aboutTitle: "Your Trusted",
     aboutTitleGold: "Transport Partner",
@@ -109,16 +97,12 @@ const translations = {
     aboutP2: "Together, they have over a decade of experience in transportation and hospitality. This team of educated, dynamic, and eco-conscious individuals is committed to offering private transport solutions that are both economical and environmentally friendly.",
     aboutFooter: "24/7 service to all airports.",
     yearsExperience: "Years Experience",
-    
-    // Services
     ourServices: "Our Services",
     airportTransfers: "Airport Transfers",
     airportDesc: "24/7 services available at all major Tunisian airports: Tunis Carthage, Enfidha, Monastir, and Sfax. Fixed prices guaranteed.",
     excursions: "Custom Excursions",
     excursionsDesc: "Discover Tunisia with our tailor-made services. From historical sites to desert adventures, we create your memorable journeys.",
     learnMore: "Learn More",
-    
-    // Why Choose
     whyChoose: "Why Choose",
     whyChooseGold: "GoTaxi",
     safety: "Safety First",
@@ -129,8 +113,6 @@ const translations = {
     professionalDrivers: "Professional Drivers",
     comfortableTrips: "Comfortable Trips",
     securePayment: "Secure Payment",
-    
-    // Contact
     contactUs: "Contact Us",
     contactDesc: "A question or specific request? Our team is available 24/7.",
     fullName: "Full Name",
@@ -139,7 +121,10 @@ const translations = {
     message: "Your Message",
     send: "Send Message",
     callUs: "Call Us",
-    emailUs: "Email"
+    emailUs: "Email",
+    sending: "Sending...",
+    sent: "Message sent successfully!",
+    error: "Error sending message."
   }
 };
 
@@ -267,50 +252,143 @@ export default function Home() {
         </section>
 
         {/* 5. SECTION CONTACT & MAP (ID: contact) */}
-        <section id="contact" className="bg-dark-2 scroll-mt-20 border-t border-white/5">
-          <div className="grid grid-cols-1 lg:grid-cols-2">
-            {/* Map */}
-            <div className="h-[400px] lg:h-auto min-h-[500px] grayscale contrast-125 opacity-50">
-              <iframe 
-                title="Tunisia Map"
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3234.332306894056!2d10.634584!3d35.824503!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x130238a67d65755d%3A0xcd6467a3afcdc0d!2sSousse%2C%20Tunisia!5e0!3m2!1sen!2stn!4v1700000000000!5m2!1sen!2stn"
-                width="100%" height="100%" style={{ border: 0 }} allowFullScreen="" loading="lazy"
-              ></iframe>
-            </div>
-
-            {/* Formulaire */}
-            <div className="p-12 lg:p-20 space-y-8 bg-dark-2">
-              <h2 className="font-serif text-4xl">{t.contactUs}</h2>
-              <p className="text-cream/60">{t.contactDesc}</p>
-              
-              <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <input type="text" placeholder={t.fullName} className="w-full bg-white/5 border border-white/10 px-6 py-4 outline-none focus:border-gold transition-colors text-cream" />
-                  <input type="email" placeholder={t.email} className="w-full bg-white/5 border border-white/10 px-6 py-4 outline-none focus:border-gold transition-colors text-cream" />
-                </div>
-                <input type="text" placeholder={t.subject} className="w-full bg-white/5 border border-white/10 px-6 py-4 outline-none focus:border-gold transition-colors text-cream" />
-                <textarea rows="4" placeholder={t.message} className="w-full bg-white/5 border border-white/10 px-6 py-4 outline-none focus:border-gold transition-colors text-cream resize-none"></textarea>
-                <button className="bg-gold text-dark font-bold uppercase tracking-widest px-10 py-4 hover:bg-gold-light transition-all w-full">
-                  {t.send}
-                </button>
-              </form>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-8 border-t border-white/5">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-gold/10 flex items-center justify-center rounded-full text-gold"><Phone size={20}/></div>
-                  <div><p className="text-[10px] uppercase text-gold">{t.callUs}</p><p className="text-sm">+216 71 000 000</p></div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-gold/10 flex items-center justify-center rounded-full text-gold"><Mail size={20}/></div>
-                  <div><p className="text-[10px] uppercase text-gold">{t.emailUs}</p><p className="text-sm">contact@ GoTaxi.tn</p></div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
+        <ContactSection t={t} />
       </main>
 
     </div>
+  );
+}
+
+// --- COMPOSANT CONTACT (Isolé pour gérer le formulaire) ---
+function ContactSection({ t }) {
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    subject: '',
+    message: ''
+  });
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState(null);
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    setSuccess(false);
+
+    try {
+      await contactAPI.send(formData);
+      setSuccess(true);
+      setFormData({ name: '', email: '', subject: '', message: '' }); // Reset
+    } catch (err) {
+      console.error(err);
+      setError(err.response?.data?.message || t.error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <section id="contact" className="bg-dark-2 scroll-mt-20 border-t border-white/5">
+      <div className="grid grid-cols-1 lg:grid-cols-2">
+        {/* Map */}
+        <div className="h-[400px] lg:h-auto min-h-[500px] grayscale contrast-125 opacity-50">
+          <iframe 
+            title="Tunisia Map"
+            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3234.332306894056!2d10.634584!3d35.824503!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x130238a67d65755d%3A0xcd6467a3afcdc0d!2sSousse%2C%20Tunisia!5e0!3m2!1sen!2stn!4v1700000000000!5m2!1sen!2stn"
+            width="100%" height="100%" style={{ border: 0 }} allowFullScreen="" loading="lazy"
+          ></iframe>
+        </div>
+
+        {/* Formulaire */}
+        <div className="p-12 lg:p-20 space-y-8 bg-dark-2">
+          <h2 className="font-serif text-4xl">{t.contactUs}</h2>
+          <p className="text-cream/60">{t.contactDesc}</p>
+          
+          <form className="space-y-4" onSubmit={handleSubmit}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <input 
+                type="text" 
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                required
+                placeholder={t.fullName} 
+                className="w-full bg-white/5 border border-white/10 px-6 py-4 outline-none focus:border-gold transition-colors text-cream" 
+              />
+              <input 
+                type="email" 
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                required
+                placeholder={t.email} 
+                className="w-full bg-white/5 border border-white/10 px-6 py-4 outline-none focus:border-gold transition-colors text-cream" 
+              />
+            </div>
+            <input 
+              type="text" 
+              name="subject"
+              value={formData.subject}
+              onChange={handleChange}
+              placeholder={t.subject} 
+              className="w-full bg-white/5 border border-white/10 px-6 py-4 outline-none focus:border-gold transition-colors text-cream" 
+            />
+            <textarea 
+              rows="4" 
+              name="message"
+              value={formData.message}
+              onChange={handleChange}
+              required
+              placeholder={t.message} 
+              className="w-full bg-white/5 border border-white/10 px-6 py-4 outline-none focus:border-gold transition-colors text-cream resize-none"
+            ></textarea>
+
+            {/* Message de succès ou d'erreur */}
+            {success && (
+              <div className="flex items-center gap-2 text-green-400 text-sm bg-green-500/10 border border-green-500/20 p-3 rounded">
+                <CheckCircle2 size={18} /> {t.sent}
+              </div>
+            )}
+            {error && (
+              <div className="flex items-center gap-2 text-red-400 text-sm bg-red-500/10 border border-red-500/20 p-3 rounded">
+                <AlertCircle size={18} /> {error}
+              </div>
+            )}
+
+            <button 
+              type="submit" 
+              disabled={loading}
+              className="bg-gold text-dark font-bold uppercase tracking-widest px-10 py-4 hover:bg-gold-light transition-all w-full flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="animate-spin" size={18} /> {t.sending}
+                </>
+              ) : (
+                t.send
+              )}
+            </button>
+          </form>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-8 border-t border-white/5">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-gold/10 flex items-center justify-center rounded-full text-gold"><Phone size={20}/></div>
+              <div><p className="text-[10px] uppercase text-gold">{t.callUs}</p><p className="text-sm">+216 71 000 000</p></div>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-gold/10 flex items-center justify-center rounded-full text-gold"><Mail size={20}/></div>
+              <div><p className="text-[10px] uppercase text-gold">{t.emailUs}</p><p className="text-sm">contact@ GoTaxi.tn</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -329,34 +407,12 @@ function Hero({ t, language }) {
 
   // MAJOR CITIES IN TUNISIA (simplified)
   const LOCATIONS = [
-    'Tunis',
-    'Sfax',
-    'Sousse',
-    'Kairouan',
-    'Gabès',
-    'Bizerte',
-    'Ariana',
-    'Gafsa',
-    'Nabeul',
-    'Monastir',
-    'Mahdia',
-    'Ben Arous',
-    'Jendouba',
-    'El Kef',
-    'Tozeur',
-    'Kasserine',
-    'Sidi Bouzid',
-    'Béja',
-    'Siliana',
-    'Zaghouan',
-    'Manouba',
-    'Kébili',
-    'Médenine',
-    'Tataouine',
-    'Hammamet'
+    'Tunis', 'Sfax', 'Sousse', 'Kairouan', 'Gabès', 'Bizerte', 'Ariana', 'Gafsa',
+    'Nabeul', 'Monastir', 'Mahdia', 'Ben Arous', 'Jendouba', 'El Kef', 'Tozeur',
+    'Kasserine', 'Sidi Bouzid', 'Béja', 'Siliana', 'Zaghouan', 'Manouba', 'Kébili',
+    'Médenine', 'Tataouine', 'Hammamet'
   ];
 
-  // Airport translations
   const airportTranslations = {
     fr: [
       'Aéroport Tunis Carthage',
@@ -455,7 +511,6 @@ function Hero({ t, language }) {
               <div className="absolute -top-1 -right-1 w-12 h-12 border-t border-r border-gold/50"></div>
               <h2 className="font-serif text-2xl text-cream mb-6 uppercase tracking-wider">{t.bookingTitle}</h2>
 
-              {/* Sélecteur Type de trajet */}
               <div className="flex gap-4 mb-8">
                 {['one-way', 'round-trip'].map((type) => (
                   <button
@@ -496,9 +551,7 @@ function Hero({ t, language }) {
                   placeholder={t.enterLocation}
                 />
                 
-                {/* Grille dynamique pour les dates */}
                 <div className={`grid ${tripType === 'round-trip' ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
-                  {/* Date de Départ */}
                   <div className="space-y-1">
                     <label className="text-[10px] uppercase tracking-widest text-gold/60 ml-1">{t.departDate}</label>
                     <input 
@@ -508,7 +561,6 @@ function Hero({ t, language }) {
                     />
                   </div>
 
-                  {/* Date de Retour - Affichée uniquement si round-trip */}
                   {tripType === 'round-trip' && (
                     <div className="space-y-1 animate-fade-in">
                       <label className="text-[10px] uppercase tracking-widest text-gold/60 ml-1">{t.returnDate}</label>

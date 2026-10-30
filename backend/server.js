@@ -6,6 +6,7 @@ const dotenv = require('dotenv');
 const path = require('path');
 const multer = require('multer');
 const ensureAdmin = require('./utils/ensureAdmin');
+const contactRoutes = require('./routes/contactRoutes');
 
 dotenv.config();
 
@@ -74,6 +75,7 @@ app.use('/api/admin',              require('./routes/adminRoutes'));
 app.use('/api/vehicles',           require('./routes/vehicleRoutes'));
 app.use('/api/prices',             require('./routes/priceRoutes'));
 app.use('/api/excursion-bookings', require('./routes/excursionBookingRoutes'));
+app.use('/api/contact', contactRoutes);
 
 // ─── 404 handler ───────────────────────────────────────────────
 // Placé APRÈS toutes les routes, sans stack trace dans les logs
