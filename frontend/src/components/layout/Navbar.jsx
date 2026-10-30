@@ -116,7 +116,7 @@ export default function Navbar() {
     }`}>
       <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
         {/* Logo */}
-        <Link to="/" className="font-serif text-2xl font-light tracking-[6px] text-cream uppercase">
+        <Link to="/" className="font-serif text-2xl font-light tracking-[6px] text-cream uppercase z-50 relative">
           GO<span className="text-gold">{t.goTaxi}</span>
         </Link>
 
@@ -136,7 +136,7 @@ export default function Navbar() {
           ))}
         </ul>
 
-        {/* Right side (Auth & Language) */}
+        {/* Right side (Auth & Language) - Desktop */}
         <div className="hidden md:flex items-center gap-6">
           {/* Language Switcher with Switch */}
           <div className="flex items-center gap-3">
@@ -185,54 +185,57 @@ export default function Navbar() {
           )}
         </div>
 
-        {/* Mobile toggle */}
-        <button className="md:hidden text-cream" onClick={() => setMenuOpen(!menuOpen)}>
-          {menuOpen ? <FiX size={24} /> : <FiMenu size={24} />}
+        {/* Mobile toggle (Hamburger) */}
+        <button 
+          className="md:hidden text-cream p-2 z-50 relative" 
+          onClick={() => setMenuOpen(!menuOpen)}
+        >
+          {menuOpen ? <FiX size={28} /> : <FiMenu size={28} />}
         </button>
       </div>
 
-      {/* Mobile menu */}
-      {menuOpen && (
-        <div className="absolute top-full left-0 w-full bg-dark-DEFAULT border-b border-gold/10 px-6 py-8 flex flex-col gap-6 animate-fade-in">
-          {/* Language Switcher in Mobile */}
-          <div className="flex items-center justify-between">
-            <span className="text-sm uppercase tracking-wider text-cream/60">Langue</span>
-            <div className="flex items-center gap-3">
-              <span className={`text-xs uppercase tracking-wider transition-colors ${language === 'fr' ? 'text-gold' : 'text-cream/40'}`}>
-                FR
-              </span>
-              <LanguageSwitch
-                checked={language === 'en'}
-                onChange={handleLanguageToggle}
-                inputProps={{ 'aria-label': 'language toggle' }}
-              />
-              <span className={`text-xs uppercase tracking-wider transition-colors ${language === 'en' ? 'text-gold' : 'text-cream/40'}`}>
-                EN
-              </span>
-            </div>
+      {/* Mobile menu (Plein écran) */}
+      <div className={`fixed inset-0 bg-dark-DEFAULT/98 backdrop-blur-xl z-40 transition-all duration-300 flex flex-col pt-24 px-6 pb-8 overflow-y-auto ${menuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+        
+        {/* Language Switcher Mobile */}
+        <div className="flex items-center justify-between border-b border-white/10 pb-6 mb-6">
+          <span className="text-sm uppercase tracking-wider text-cream/60">Langue / Language</span>
+          <div className="flex items-center gap-3">
+            <span className={`text-xs uppercase tracking-wider transition-colors ${language === 'fr' ? 'text-gold' : 'text-cream/40'}`}>FR</span>
+            <LanguageSwitch checked={language === 'en'} onChange={handleLanguageToggle} />
+            <span className={`text-xs uppercase tracking-wider transition-colors ${language === 'en' ? 'text-gold' : 'text-cream/40'}`}>EN</span>
           </div>
-          
-          <div className="h-[1px] bg-white/5 w-full"></div>
-          
+        </div>
+
+        {/* Liens Mobile */}
+        <div className="flex flex-col gap-6 mb-10">
           {links.map((l) => (
             <Link key={l.to} to={l.to} onClick={() => setMenuOpen(false)}
-              className="text-sm tracking-[3px] uppercase text-cream/70 hover:text-gold">
+              className="text-2xl font-serif tracking-[2px] text-cream hover:text-gold transition-colors">
               {l.label}
             </Link>
           ))}
-          <div className="h-[1px] bg-white/5 w-full my-2"></div>
+        </div>
+
+        {/* Auth Mobile */}
+        <div className="mt-auto border-t border-white/10 pt-6">
           {!token ? (
             <div className="flex flex-col gap-4">
-              <Link to="/login" onClick={() => setMenuOpen(false)} className="text-sm tracking-[3px] uppercase text-gold">{t.login}</Link>
-              <Link to="#transferts" onClick={() => setMenuOpen(false)} className="bg-gold text-dark text-center py-3 text-sm font-bold uppercase tracking-widest">{t.book}</Link>
+              <Link to="/admin/login" onClick={() => setMenuOpen(false)} className="text-center text-sm tracking-[3px] uppercase text-gold border border-gold py-3">{t.login}</Link>
+              <Link to="#transferts" onClick={() => setMenuOpen(false)} className="bg-gold text-dark text-center py-4 text-sm font-bold uppercase tracking-widest">{t.book}</Link>
             </div>
           ) : (
-            <button onClick={handleLogout} className="flex items-center gap-2 text-sm text-cream/70 uppercase tracking-widest">
-              <FiLogOut /> {t.logout}
-            </button>
+            <div className="flex flex-col gap-4">
+              <Link to="/dashboard" onClick={() => setMenuOpen(false)} className="flex items-center justify-center gap-2 text-sm text-gold uppercase tracking-widest border border-gold/30 py-3">
+                <FiUser /> {t.dashboard}
+              </Link>
+              <button onClick={() => { setMenuOpen(false); handleLogout(); }} className="flex items-center justify-center gap-2 text-sm text-cream/70 uppercase tracking-widest py-3">
+                <FiLogOut /> {t.logout}
+              </button>
+            </div>
           )}
         </div>
-      )}
+      </div>
     </nav>
   );
 }

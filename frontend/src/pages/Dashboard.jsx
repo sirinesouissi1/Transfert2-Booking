@@ -9,6 +9,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { bookingAPI, vehicleAPI, excursionAPI, excursionBookingAPI } from '../services/api';
 import useAuthStore from '../context/authStore';
 import {
+  FiMenu ,
   FiHome,
   FiUsers,
   FiTruck,
@@ -79,6 +80,9 @@ const isAdmin = user?.role === 'admin';
   const [modalType, setModalType] = useState(null);
   const [selectedItem, setSelectedItem] = useState(null);
   const [selectedResource, setSelectedResource] = useState(null);
+
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false); 
+
 
   // Modal de création (véhicule / excursion)
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -267,11 +271,20 @@ const isAdmin = user?.role === 'admin';
   return (
     <div className="flex h-screen bg-[#1F1F2E] text-cream">
       {/* Sidebar */}
-      <aside className="w-64 bg-[#2A2A3C] border-r border-white/10 flex flex-col">
-        <div className="p-6 border-b border-white/10">
+           {/* Sidebar - Cachée sur mobile, visible sur desktop (md:flex) */}
+      <aside className={`
+        fixed md:static inset-y-0 left-0 z-50 w-64 bg-[#2A2A3C] border-r border-white/10 flex flex-col
+        transition-transform duration-300 ease-in-out
+        ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+      `}>
+        <div className="p-6 border-b border-white/10 flex justify-between items-center">
           <Link to="/" className="font-serif text-2xl tracking-[4px] text-cream">
             GO<span className="text-gold">TAXI</span>
           </Link>
+          {/* Bouton fermer (mobile uniquement) */}
+          <button className="md:hidden text-muted hover:text-cream" onClick={() => setMobileMenuOpen(false)}>
+            <FiX size={24} />
+          </button>
         </div>
 
         <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
@@ -282,7 +295,7 @@ const isAdmin = user?.role === 'admin';
             active={isActive('dashboard')}
           />
           <NavLink
-            onClick={() => setCurrentView('clients')}
+            onClick={() => { setCurrentView('clients'); setMobileMenuOpen(false); }}
             icon={<FiUsers />}
             label="Clients"
             active={isActive('clients')}
@@ -353,7 +366,7 @@ const isAdmin = user?.role === 'admin';
           />
         </nav>
 
-        <div className="p-4 border-t border-white/10">
+          <div className="p-4 border-t border-white/10">
           <button
             onClick={handleLogout}
             className="flex items-center gap-3 px-3 py-2 text-sm text-muted hover:text-gold hover:bg-white/5 rounded w-full transition-colors"
@@ -364,14 +377,32 @@ const isAdmin = user?.role === 'admin';
         </div>
       </aside>
 
+      {/* Overlay sombre quand le menu mobile est ouvert */}
+      {mobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
       {/* Main content */}
-      <main className="flex-1 overflow-y-auto">
-        <div className="sticky top-0 z-10 bg-[#2A2A3C] border-b border-white/10 px-8 py-4 flex justify-end items-center">
-          <div className="flex items-center gap-4">
+      <main className="flex-1 flex flex-col h-full overflow-hidden">
+               {/* Header du Dashboard */}
+        <div className="sticky top-0 z-30 bg-[#2A2A3C] border-b border-white/10 px-4 md:px-8 py-4 flex justify-between items-center">
+          
+          {/* Bouton menu 3 points (visible uniquement sur mobile) */}
+          <button 
+            className="md:hidden p-2 text-cream hover:text-gold"
+            onClick={() => setMobileMenuOpen(true)}
+          >
+            <FiMenu size={24} />
+          </button>
+
+          <div className="flex items-center gap-4 ml-auto">
             <span className="text-sm text-cream">
-              <span className="text-muted">Bonjour, </span>
+              <span className="text-muted hidden sm:inline">Bonjour, </span>
               <span className="text-gold font-serif">{user?.firstName}</span>
-              {isAdmin && <span className="ml-2 text-xs bg-gold/20 text-gold px-2 py-0.5 rounded">Admin</span>}
+              {isAdmin && <span className="ml-2 text-xs bg-gold/20 text-gold px-2 py-0.5 rounded hidden sm:inline-block">Admin</span>}
             </span>
             <button
               onClick={handleLogout}
@@ -383,7 +414,8 @@ const isAdmin = user?.role === 'admin';
           </div>
         </div>
 
-        <div className="p-8">
+        {/* Contenu défilable */}
+        <div className="p-4 md:p-8 overflow-y-auto flex-1">
           {error && (
             <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 text-red-400 rounded">
               {error}
