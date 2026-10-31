@@ -6,12 +6,12 @@ import {
 import { getImageUrl } from '../utils/imageUrl';
 import BookingCalendar from '../pages/BookingCalendar';
 import { Link, useNavigate } from 'react-router-dom';
-import { bookingAPI, vehicleAPI, excursionAPI, excursionBookingAPI , contactAPI} from '../services/api';
+import { bookingAPI, vehicleAPI, excursionAPI, excursionBookingAPI, contactAPI } from '../services/api';
 import useAuthStore from '../context/authStore';
 import {
   FiAlertTriangle,
   FiMail,
-  FiMenu ,
+  FiMenu,
   FiHome,
   FiUsers,
   FiTruck,
@@ -54,6 +54,13 @@ const STATUS_LABELS = {
   cancelled: 'Annulé',
 };
 
+const STATUS_COLORS = {
+  pending: '#F39C12',
+  confirmed: '#27AE60',
+  completed: '#2C3E50',
+  cancelled: '#E74C3C',
+};
+
 // Helper d'affichage du prix (null / undefined / 0 = "sur demande")
 const formatPrice = (value) => {
   if (value === null || value === undefined || Number(value) === 0) {
@@ -65,8 +72,9 @@ const formatPrice = (value) => {
 export default function Dashboard() {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
-const isAdmin = user?.role === 'admin';
+  const isAdmin = user?.role === 'admin';
 
+  // ---- États principaux ----
   const [excursionBookings, setExcursionBookings] = useState([]);
   const [excursionBookingsAll, setExcursionBookingsAll] = useState([]);
   const [currentView, setCurrentView] = useState('dashboard');
@@ -78,25 +86,45 @@ const isAdmin = user?.role === 'admin';
   const [error, setError] = useState(null);
   const [bookingsOpen, setBookingsOpen] = useState(false);
 
+  // ---- Contacts (déplacés ici : doivent être déclarés avant fetchData) ----
+  const [contacts, setContacts] = useState([]);
+  const [unreadContacts, setUnreadContacts] = useState(0);
+
+  // ---- Modals vue / édition ----
   const [modalOpen, setModalOpen] = useState(false);
   const [modalType, setModalType] = useState(null);
   const [selectedItem, setSelectedItem] = useState(null);
   const [selectedResource, setSelectedResource] = useState(null);
 
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false); 
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-
-  // Modal de création (véhicule / excursion)
+  // ---- Modal de création (véhicule / excursion) ----
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createResource, setCreateResource] = useState(null);
 
-  // ---- État pour Prix Véhicule par Destination ----
+  // ---- Prix Véhicule par Destination ----
   const [selectedVehicleForPricing, setSelectedVehicleForPricing] = useState(null);
+
+  // ---- Modal de confirmation ----
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: null,
+  });
+
+  const askConfirmation = (title, message, action) => {
+    setConfirmModal({ isOpen: true, title, message, onConfirm: action });
+  };
+
+  const closeConfirmModal = () => {
+    setConfirmModal({ isOpen: false, title: '', message: '', onConfirm: null });
+  };
 
   // ---- Données pour les graphiques ----
   const bookingsByMonth = useMemo(() => {
     const months = {};
-    bookings.forEach(b => {
+    bookings.forEach((b) => {
       const date = new Date(b.departureDate);
       const monthYear = `${date.getMonth() + 1}/${date.getFullYear()}`;
       months[monthYear] = (months[monthYear] || 0) + 1;
@@ -106,27 +134,20 @@ const isAdmin = user?.role === 'admin';
 
   const bookingsByStatus = useMemo(() => {
     const statusCount = { pending: 0, confirmed: 0, completed: 0, cancelled: 0 };
-    bookings.forEach(b => {
+    bookings.forEach((b) => {
       if (statusCount[b.status] !== undefined) statusCount[b.status]++;
     });
     return Object.entries(statusCount).map(([name, value]) => ({ name, value }));
   }, [bookings]);
 
   const bookingsByType = useMemo(() => {
-    const transferts = bookings.filter(b => b.bookingType === 'transfer').length;
-    const excursionsCount = bookings.filter(b => b.bookingType === 'excursion').length;
+    const transferts = bookings.filter((b) => b.bookingType === 'transfer').length;
+    const excursionsCount = bookings.filter((b) => b.bookingType === 'excursion').length;
     return [
       { name: 'Transferts', value: transferts },
-      { name: 'Excursions', value: excursionsCount }
+      { name: 'Excursions', value: excursionsCount },
     ];
   }, [bookings]);
-
-  const STATUS_COLORS = {
-    pending: '#F39C12',
-    confirmed: '#27AE60',
-    completed: '#2C3E50',
-    cancelled: '#E74C3C'
-  };
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -172,18 +193,16 @@ const isAdmin = user?.role === 'admin';
         const excursionsRes = await excursionAPI.getAll({ limit: 100 });
         setExcursions(excursionsRes.data.excursions || []);
 
-               const allExcursionBookings = await excursionBookingAPI.getAll();
-        setExcursionBookingsAll(allExcursionBookings.data.bookings || []);
+        const allExcursionBookings = await excursionBookingAPI.getAll();
+        const excBookingsData = allExcursionBookings.data.bookings || [];
+        setExcursionBookingsAll(excBookingsData);
+        setExcursionBookings(excBookingsData);
 
-        if (currentView === 'excursionBookings') {
-          setExcursionBookings(allExcursionBookings.data.bookings || []);
-        }
-
-        // ⬇️ AJOUT POUR LES CONTACTS
+        // Contacts
         const contactsRes = await contactAPI.getAll();
         const contactsData = contactsRes.data.messages || [];
         setContacts(contactsData);
-        setUnreadContacts(contactsData.filter(c => !c.isRead).length);
+        setUnreadContacts(contactsData.filter((c) => !c.isRead).length);
       }
     } catch (err) {
       console.error('Erreur chargement données:', err);
@@ -191,7 +210,7 @@ const isAdmin = user?.role === 'admin';
     } finally {
       setLoading(false);
     }
-  }, [currentView, isAdmin]);
+  }, [isAdmin]);
 
   useEffect(() => {
     fetchData();
@@ -200,6 +219,11 @@ const isAdmin = user?.role === 'admin';
   const handleLogout = () => {
     logout();
     navigate('/admin/login');
+  };
+
+  const goTo = (view) => {
+    setCurrentView(view);
+    setMobileMenuOpen(false);
   };
 
   const openViewModal = (resource, item) => {
@@ -233,22 +257,30 @@ const isAdmin = user?.role === 'admin';
     setModalType(null);
   };
 
-  const handleDelete = async (resource, id) => {
-    if (!window.confirm('Confirmer la suppression ?')) return;
-    try {
-      if (resource === 'vehicle') {
-        await vehicleAPI.delete(id);
-      } else if (resource === 'excursion') {
-        await excursionAPI.delete(id);
-      } else if (resource === 'transfer') {
-        await bookingAPI.updateStatus(id, { status: 'cancelled' });
-      } else if (resource === 'excursionBooking') {
-        await excursionAPI.updateBookingStatus(id, { status: 'cancelled' });
+  // Suppression avec modal de confirmation personnalisé
+  const handleDelete = (resource, id) => {
+    askConfirmation(
+      'Confirmer la suppression',
+      'Voulez-vous vraiment supprimer cet élément ? Cette action est irréversible.',
+      async () => {
+        try {
+          if (resource === 'vehicle') {
+            await vehicleAPI.delete(id);
+          } else if (resource === 'excursion') {
+            await excursionAPI.delete(id);
+          } else if (resource === 'transfer') {
+            await bookingAPI.updateStatus(id, { status: 'cancelled' });
+          } else if (resource === 'excursionBooking') {
+            await excursionAPI.updateBookingStatus(id, { status: 'cancelled' });
+          }
+          fetchData();
+        } catch (err) {
+          setError(`Erreur lors de la suppression : ${err.response?.data?.message || err.message}`);
+        } finally {
+          closeConfirmModal();
+        }
       }
-      fetchData();
-    } catch (err) {
-      setError(`Erreur lors de la suppression : ${err.response?.data?.message || err.message}`);
-    }
+    );
   };
 
   const handleUpdate = async (resource, id, data) => {
@@ -276,34 +308,16 @@ const isAdmin = user?.role === 'admin';
 
   const isActive = (view) => currentView === view;
 
- const [contacts, setContacts] = useState([]);
-  const [unreadContacts, setUnreadContacts] = useState(0);
-
-  // État pour le modal de confirmation
-  const [confirmModal, setConfirmModal] = useState({
-    isOpen: false,
-    title: '',
-    message: '',
-    onConfirm: null,
-  });
-
-  const askConfirmation = (title, message, action) => {
-    setConfirmModal({ isOpen: true, title, message, onConfirm: action });
-  };
-
-  const closeConfirmModal = () => {
-    setConfirmModal({ isOpen: false, title: '', message: '', onConfirm: null });
-  };
-
   return (
     <div className="flex h-screen bg-[#1F1F2E] text-cream">
-      {/* Sidebar */}
-           {/* Sidebar - Cachée sur mobile, visible sur desktop (md:flex) */}
-      <aside className={`
+      {/* Sidebar - cachée sur mobile, visible sur desktop (md:static) */}
+      <aside
+        className={`
         fixed md:static inset-y-0 left-0 z-50 w-64 bg-[#2A2A3C] border-r border-white/10 flex flex-col
         transition-transform duration-300 ease-in-out
         ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-      `}>
+      `}
+      >
         <div className="p-6 border-b border-white/10 flex justify-between items-center">
           <Link to="/" className="font-serif text-2xl tracking-[4px] text-cream">
             GO<span className="text-gold">TAXI</span>
@@ -316,33 +330,32 @@ const isAdmin = user?.role === 'admin';
 
         <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
           <NavLink
-            onClick={() => setCurrentView('dashboard')}
+            onClick={() => goTo('dashboard')}
             icon={<FiHome />}
             label="Dashboard"
             active={isActive('dashboard')}
           />
           <NavLink
-            onClick={() => { setCurrentView('clients'); setMobileMenuOpen(false); }}
+            onClick={() => goTo('clients')}
             icon={<FiUsers />}
             label="Clients"
             active={isActive('clients')}
           />
           <NavLink
-            onClick={() => setCurrentView('vehicules')}
+            onClick={() => goTo('vehicules')}
             icon={<FiTruck />}
             label="Véhicules"
             active={isActive('vehicules')}
           />
           <NavLink
-            onClick={() => setCurrentView('excursions')}
+            onClick={() => goTo('excursions')}
             icon={<FiMap />}
             label="Excursions"
             active={isActive('excursions')}
           />
-
           <NavLink
             onClick={() => {
-              setCurrentView('vehiculePricing');
+              goTo('vehiculePricing');
               setSelectedVehicleForPricing(null);
             }}
             icon={<FiTag />}
@@ -368,14 +381,14 @@ const isAdmin = user?.role === 'admin';
             {bookingsOpen && (
               <div className="ml-8 mt-1 space-y-1">
                 <NavLink
-                  onClick={() => { setCurrentView('transferts'); setBookingsOpen(false); }}
+                  onClick={() => { goTo('transferts'); setBookingsOpen(false); }}
                   icon={<span className="text-xs">✈</span>}
                   label="Transferts"
                   active={isActive('transferts')}
                   compact
                 />
                 <NavLink
-                  onClick={() => { setCurrentView('excursionBookings'); setBookingsOpen(false); }}
+                  onClick={() => { goTo('excursionBookings'); setBookingsOpen(false); }}
                   icon={<span className="text-xs">🏛</span>}
                   label="Excursions"
                   active={isActive('excursionBookings')}
@@ -386,15 +399,15 @@ const isAdmin = user?.role === 'admin';
           </div>
 
           <NavLink
-            onClick={() => setCurrentView('calendar')}
+            onClick={() => goTo('calendar')}
             icon={<FiCalendar />}
             label="Calendrier"
             active={isActive('calendar')}
           />
-        </nav>
 
+          {/* Messages : maintenant DANS le <nav> */}
           <NavLink
-            onClick={() => { setCurrentView('messages'); setMobileMenuOpen(false); }}
+            onClick={() => goTo('messages')}
             icon={<FiMail />}
             label={
               <span className="flex items-center justify-between w-full">
@@ -408,8 +421,9 @@ const isAdmin = user?.role === 'admin';
             }
             active={isActive('messages')}
           />
+        </nav>
 
-          <div className="p-4 border-t border-white/10">
+        <div className="p-4 border-t border-white/10">
           <button
             onClick={handleLogout}
             className="flex items-center gap-3 px-3 py-2 text-sm text-muted hover:text-gold hover:bg-white/5 rounded w-full transition-colors"
@@ -422,7 +436,7 @@ const isAdmin = user?.role === 'admin';
 
       {/* Overlay sombre quand le menu mobile est ouvert */}
       {mobileMenuOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 z-40 md:hidden"
           onClick={() => setMobileMenuOpen(false)}
         />
@@ -430,11 +444,10 @@ const isAdmin = user?.role === 'admin';
 
       {/* Main content */}
       <main className="flex-1 flex flex-col h-full overflow-hidden">
-               {/* Header du Dashboard */}
+        {/* Header du Dashboard */}
         <div className="sticky top-0 z-30 bg-[#2A2A3C] border-b border-white/10 px-4 md:px-8 py-4 flex justify-between items-center">
-          
-          {/* Bouton menu 3 points (visible uniquement sur mobile) */}
-          <button 
+          {/* Bouton menu (visible uniquement sur mobile) */}
+          <button
             className="md:hidden p-2 text-cream hover:text-gold"
             onClick={() => setMobileMenuOpen(true)}
           >
@@ -459,20 +472,20 @@ const isAdmin = user?.role === 'admin';
 
         {/* Contenu défilable */}
         <div className="p-4 md:p-8 overflow-y-auto flex-1">
-                   {error && (
+          {error && (
             <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 text-red-400 rounded">
               {error}
             </div>
           )}
 
-          {/* ⬇️ ALERTE NOTIFICATION */}
+          {/* Alerte notification messages */}
           {unreadContacts > 0 && currentView === 'dashboard' && (
             <div className="mb-6 p-4 bg-gold/10 border border-gold/30 text-gold rounded flex items-center justify-between animate-fade-in">
               <div className="flex items-center gap-3">
                 <FiMail size={20} />
                 <span>Vous avez <strong>{unreadContacts}</strong> nouveau(x) message(s) de contact non lu(s).</span>
               </div>
-              <button 
+              <button
                 onClick={() => setCurrentView('messages')}
                 className="bg-gold text-dark-2 px-3 py-1 rounded text-xs font-medium hover:bg-gold/90 whitespace-nowrap"
               >
@@ -514,7 +527,7 @@ const isAdmin = user?.role === 'admin';
 
                 <div className="bg-[#2A2A3C] border border-white/10 p-6 rounded-lg">
                   <h3 className="text-lg font-serif mb-4 text-cream">Réservations par statut</h3>
-                  {bookingsByStatus.every(item => item.value === 0) ? (
+                  {bookingsByStatus.every((item) => item.value === 0) ? (
                     <p className="text-muted text-sm">Aucune donnée disponible</p>
                   ) : (
                     <ResponsiveContainer width="100%" height={300}>
@@ -543,7 +556,7 @@ const isAdmin = user?.role === 'admin';
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
                 <div className="bg-[#2A2A3C] border border-white/10 p-6 rounded-lg">
                   <h3 className="text-lg font-serif mb-4 text-cream">Type de réservations</h3>
-                  {bookingsByType.every(item => item.value === 0) ? (
+                  {bookingsByType.every((item) => item.value === 0) ? (
                     <p className="text-muted text-sm">Aucune donnée disponible</p>
                   ) : (
                     <ResponsiveContainer width="100%" height={300}>
@@ -695,7 +708,7 @@ const isAdmin = user?.role === 'admin';
 
           {currentView === 'transferts' && (
             <TransferList
-              bookings={bookings.filter(b => b.bookingType === 'transfer')}
+              bookings={bookings.filter((b) => b.bookingType === 'transfer')}
               loading={loading}
               isAdmin={isAdmin}
               onView={(transfer) => openViewModal('transfer', transfer)}
@@ -715,7 +728,7 @@ const isAdmin = user?.role === 'admin';
             />
           )}
 
-                   {currentView === 'calendar' && (
+          {currentView === 'calendar' && (
             <BookingCalendar
               bookings={bookings}
               excursionBookings={excursionBookingsAll}
@@ -725,20 +738,20 @@ const isAdmin = user?.role === 'admin';
             />
           )}
 
-          {/* ⬇️ AJOUT DE LA VUE MESSAGES */}
+          {/* Vue Messages */}
           {currentView === 'messages' && (
             <div className="bg-[#2A2A3C] border border-white/10 rounded-lg p-6">
               <h1 className="text-2xl font-serif mb-6 flex items-center gap-3">
                 <FiMail className="text-gold" /> Messages reçus
               </h1>
-              
+
               {contacts.length === 0 ? (
                 <p className="text-muted">Aucun message pour le moment.</p>
               ) : (
                 <div className="space-y-4">
                   {contacts.map((c) => (
-                    <div 
-                      key={c._id} 
+                    <div
+                      key={c._id}
                       className={`p-4 border rounded-lg transition-all ${
                         c.isRead ? 'bg-[#35354A]/50 border-white/10' : 'bg-[#35354A] border-gold/30 shadow-lg shadow-gold/5'
                       }`}
@@ -758,28 +771,37 @@ const isAdmin = user?.role === 'admin';
                         </span>
                       </div>
                       <p className="text-sm text-cream/90 whitespace-pre-wrap mt-3 mb-4">{c.message}</p>
-                      
+
                       <div className="flex justify-end gap-2">
                         {!c.isRead && (
-                          <button 
+                          <button
                             onClick={async () => {
-                              await contactAPI.markRead(c._id);
-                              fetchData(); // Rafraîchit la liste
+                              try {
+                                await contactAPI.markRead(c._id);
+                                fetchData();
+                              } catch (err) {
+                                setError(`Erreur : ${err.response?.data?.message || err.message}`);
+                              }
                             }}
                             className="text-xs bg-gold text-dark-2 px-3 py-1.5 rounded hover:bg-gold/90 font-medium"
                           >
                             Marquer comme lu
                           </button>
                         )}
-                        <button 
+                        <button
                           onClick={() => {
                             askConfirmation(
                               'Supprimer le message',
                               'Voulez-vous vraiment supprimer ce message de contact ?',
                               async () => {
-                                await contactAPI.delete(c._id);
-                                fetchData();
-                                closeConfirmModal();
+                                try {
+                                  await contactAPI.delete(c._id);
+                                  fetchData();
+                                } catch (err) {
+                                  setError(`Erreur : ${err.response?.data?.message || err.message}`);
+                                } finally {
+                                  closeConfirmModal();
+                                }
                               }
                             );
                           }}
@@ -818,6 +840,15 @@ const isAdmin = user?.role === 'admin';
           }}
         />
       )}
+
+      {/* Modal de confirmation (suppressions) */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={closeConfirmModal}
+      />
     </div>
   );
 }
@@ -957,7 +988,7 @@ function VehicleDestinationPricing({ vehicle, isAdmin, onBack }) {
       });
       if (!res.ok) {
         const err = await res.json();
-        setAddError(err.message || 'Erreur lors de l\'ajout');
+        setAddError(err.message || "Erreur lors de l'ajout");
         return;
       }
       setAddForm({ from: '', to: '', tripType: 'one_way', price: '' });
@@ -996,29 +1027,18 @@ function VehicleDestinationPricing({ vehicle, isAdmin, onBack }) {
     }
   };
 
-  const handleDelete = (resource, id) => {
-    askConfirmation(
-      'Confirmer la suppression',
-      'Voulez-vous vraiment supprimer cet élément ? Cette action est irréversible.',
-      async () => {
-        try {
-          if (resource === 'vehicle') {
-            await vehicleAPI.delete(id);
-          } else if (resource === 'excursion') {
-            await excursionAPI.delete(id);
-          } else if (resource === 'transfer') {
-            await bookingAPI.updateStatus(id, { status: 'cancelled' });
-          } else if (resource === 'excursionBooking') {
-            await excursionAPI.updateBookingStatus(id, { status: 'cancelled' });
-          }
-          fetchData();
-        } catch (err) {
-          setError(`Erreur lors de la suppression : ${err.response?.data?.message || err.message}`);
-        } finally {
-          closeConfirmModal();
-        }
-      }
-    );
+  // CORRIGÉ : ce composant n'a pas accès à askConfirmation / fetchData / setError du Dashboard.
+  // On supprime donc le tarif directement via l'API /prices.
+  const handleDelete = async (id) => {
+    if (!window.confirm('Voulez-vous vraiment supprimer ce tarif ?')) return;
+    try {
+      const res = await fetch(`${API_URL}/prices/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Suppression refusée');
+      await fetchPrices();
+      showSuccess('Tarif supprimé.');
+    } catch (err) {
+      setAddError('Erreur lors de la suppression du tarif.');
+    }
   };
 
   const TRIP_LABELS = { one_way: 'Aller simple', round_trip: 'Aller-retour' };
@@ -1556,6 +1576,10 @@ function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin }) {
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
+  const updateStep = (index, field, value) => {
+    setItineraryArr((prev) => prev.map((s, i) => (i === index ? { ...s, [field]: value } : s)));
+  };
+
   const handleImageChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) { setImageFile(null); setImagePreview(null); return; }
@@ -1575,11 +1599,11 @@ function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin }) {
 
     // Préparation des données pour véhicule ou excursion
     const payload = { ...formData };
-    
+
     if (resource === 'excursion') {
-      payload.includes = includesStr.split('\n').map(s => s.trim()).filter(Boolean);
-      payload.excludes = excludesStr.split('\n').map(s => s.trim()).filter(Boolean);
-      payload.itinerary = itineraryArr.filter(i => i.time || i.title || i.description);
+      payload.includes = includesStr.split('\n').map((s) => s.trim()).filter(Boolean);
+      payload.excludes = excludesStr.split('\n').map((s) => s.trim()).filter(Boolean);
+      payload.itinerary = itineraryArr.filter((i) => i.time || i.title || i.description);
     }
 
     if ((resource === 'vehicle' || resource === 'excursion') && imageFile) {
@@ -1588,7 +1612,7 @@ function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin }) {
         if (k === '_id' || k === '__v' || k === 'image' || k === 'coverImage') return;
         if (k === 'createdAt' || k === 'updatedAt') return;
         if (v === undefined || v === null) return;
-        
+
         // Si c'est un tableau ou un objet, on le stringifie (pour multer)
         if (typeof v === 'object') {
           fd.append(k, JSON.stringify(v));
@@ -1596,6 +1620,7 @@ function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin }) {
           fd.append(k, String(v));
         }
       });
+      // Un seul envoi de l'image
       fd.append(resource === 'vehicle' ? 'image' : 'coverImage', imageFile);
       onUpdate(resource, item._id, fd);
     } else {
@@ -1643,8 +1668,7 @@ function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin }) {
             <DetailSection title="Description" icon={<FiTag />}>
               <p className="px-4 py-3 text-sm text-cream/90 leading-relaxed">{item.description || '-'}</p>
             </DetailSection>
-            
-            {/* Détails ajoutés : Inclus / Exclus / Itinéraire */}
+
             {item.itinerary && item.itinerary.length > 0 && (
               <DetailSection title="Programme" icon={<FiClock />}>
                 {item.itinerary.map((step, idx) => (
@@ -1655,7 +1679,7 @@ function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin }) {
                 ))}
               </DetailSection>
             )}
-            
+
             {(item.includes?.length > 0 || item.excludes?.length > 0) && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {item.includes?.length > 0 && (
@@ -1905,25 +1929,13 @@ function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin }) {
             {itineraryArr.map((step, index) => (
               <div key={index} className="flex gap-2 mb-2 items-start bg-[#35354A] p-2 rounded border border-white/10">
                 <input type="text" placeholder="Heure (ex: 08:00)" value={step.time}
-                  onChange={(e) => {
-                    const newArr = [...itineraryArr];
-                    newArr[index].time = e.target.value;
-                    setItineraryArr(newArr);
-                  }}
+                  onChange={(e) => updateStep(index, 'time', e.target.value)}
                   className="w-20 bg-dark-3 border border-white/10 rounded px-2 py-1 text-sm text-cream focus:outline-none" />
                 <input type="text" placeholder="Titre (ex: Départ)" value={step.title}
-                  onChange={(e) => {
-                    const newArr = [...itineraryArr];
-                    newArr[index].title = e.target.value;
-                    setItineraryArr(newArr);
-                  }}
+                  onChange={(e) => updateStep(index, 'title', e.target.value)}
                   className="flex-1 bg-dark-3 border border-white/10 rounded px-2 py-1 text-sm text-cream focus:outline-none" />
                 <input type="text" placeholder="Description" value={step.description}
-                  onChange={(e) => {
-                    const newArr = [...itineraryArr];
-                    newArr[index].description = e.target.value;
-                    setItineraryArr(newArr);
-                  }}
+                  onChange={(e) => updateStep(index, 'description', e.target.value)}
                   className="flex-[2] bg-dark-3 border border-white/10 rounded px-2 py-1 text-sm text-cream focus:outline-none" />
                 <button type="button" onClick={() => setItineraryArr(itineraryArr.filter((_, i) => i !== index))}
                   className="p-1 text-red-400 hover:text-red-300"><FiX size={16} /></button>
@@ -2045,7 +2057,7 @@ function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin }) {
 function CreateResourceModal({ resource, onClose, onCreated }) {
   const isVehicle = resource === 'vehicle';
 
-   const [form, setForm] = useState(
+  const [form, setForm] = useState(
     isVehicle
       ? {
           name: '',
@@ -2068,11 +2080,11 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
           includes: '',
           excludes: '',
           itinerary: [{ time: '', title: '', description: '' }],
-          // ⬇️ NOUVEAU : prix par point de départ
+          // Prix par point de départ et taille de groupe
           departurePrices: {
-            Hammamet: { "4": '', "6": '', "8": '' },
-            Sousse:   { "4": '', "6": '', "8": '' },
-            Tunis:    { "4": '', "6": '', "8": '' },
+            Hammamet: { '4': '', '6': '', '8': '' },
+            Sousse: { '4': '', '6': '', '8': '' },
+            Tunis: { '4': '', '6': '', '8': '' },
           },
         }
   );
@@ -2084,6 +2096,13 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setForm((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+  };
+
+  const updateStep = (index, field, value) => {
+    setForm((prev) => ({
+      ...prev,
+      itinerary: prev.itinerary.map((s, i) => (i === index ? { ...s, [field]: value } : s)),
+    }));
   };
 
   const handleImageChange = (e) => {
@@ -2156,19 +2175,18 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
         fd.append('isActive', 'true');
 
         // Préparation des listes et de l'itinéraire
-        const includesArray = form.includes.split('\n').map(s => s.trim()).filter(Boolean);
-        const excludesArray = form.excludes.split('\n').map(s => s.trim()).filter(Boolean);
-        const itineraryArray = form.itinerary.filter(item => item.time || item.title || item.description);
+        const includesArray = form.includes.split('\n').map((s) => s.trim()).filter(Boolean);
+        const excludesArray = form.excludes.split('\n').map((s) => s.trim()).filter(Boolean);
+        const itineraryArray = form.itinerary.filter((item) => item.time || item.title || item.description);
 
         fd.append('includes', JSON.stringify(includesArray));
         fd.append('excludes', JSON.stringify(excludesArray));
         fd.append('itinerary', JSON.stringify(itineraryArray));
 
-        if (imageFile) {
-          fd.append('coverImage', imageFile);
-        }
-                // ⬇️ AJOUT : Nettoyer et envoyer les prix par point de départ
-      const cleanedDeparturePrices = {};
+        // ❌ SUPPRIMÉ : le 1er fd.append('coverImage', imageFile) qui causait "Unexpected field"
+
+        // Nettoyer et envoyer les prix par point de départ
+        const cleanedDeparturePrices = {};
         Object.entries(form.departurePrices || {}).forEach(([city, prices]) => {
           const cleaned = {};
           Object.entries(prices).forEach(([size, price]) => {
@@ -2178,7 +2196,7 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
         });
         fd.append('departurePrices', JSON.stringify(cleanedDeparturePrices));
 
-        // ⬇️ UN SEUL ENVOI DE L'IMAGE (le bon)
+        // ✅ UN SEUL envoi de l'image
         if (imageFile) {
           fd.append('coverImage', imageFile);
         }
@@ -2375,10 +2393,11 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
                     className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40"
                   />
                 </div>
-                {/* ⬇️ NOUVEAU : Tarifs par point de départ */}
+
+                {/* Tarifs par point de départ */}
                 <div className="md:col-span-2 mt-4 bg-[#35354A]/50 p-4 rounded border border-gold/20">
                   <h4 className="text-sm text-gold mb-3 flex items-center gap-2">
-                    <FiDollarSign size={14}/> Prix par point de départ et taille de groupe (€)
+                    <FiDollarSign size={14} /> Prix par point de départ et taille de groupe (€)
                   </h4>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {['Hammamet', 'Sousse', 'Tunis'].map((city) => (
@@ -2392,15 +2411,16 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
                               min="0"
                               value={form.departurePrices?.[city]?.[size] || ''}
                               onChange={(e) => {
-                                setForm(prev => ({
+                                const val = e.target.value;
+                                setForm((prev) => ({
                                   ...prev,
                                   departurePrices: {
                                     ...(prev.departurePrices || {}),
                                     [city]: {
                                       ...((prev.departurePrices && prev.departurePrices[city]) || {}),
-                                      [size]: e.target.value
-                                    }
-                                  }
+                                      [size]: val,
+                                    },
+                                  },
                                 }));
                               }}
                               placeholder="0"
@@ -2415,31 +2435,20 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
                     Laisser vide = "Sur demande" pour cette combinaison.
                   </p>
                 </div>
+
                 {/* Programme */}
                 <div className="md:col-span-2 mt-2">
                   <label className="block text-[10px] uppercase tracking-wider text-muted mb-2">Programme de la journée</label>
                   {form.itinerary.map((step, index) => (
                     <div key={index} className="flex gap-2 mb-2 items-start bg-[#35354A] p-2 rounded border border-white/10">
                       <input type="text" placeholder="Heure (ex: 08:00)" value={step.time}
-                        onChange={(e) => {
-                          const newArr = [...form.itinerary];
-                          newArr[index].time = e.target.value;
-                          setForm({ ...form, itinerary: newArr });
-                        }}
+                        onChange={(e) => updateStep(index, 'time', e.target.value)}
                         className="w-20 bg-dark-3 border border-white/10 rounded px-2 py-1 text-sm text-cream focus:outline-none" />
                       <input type="text" placeholder="Titre (ex: Départ)" value={step.title}
-                        onChange={(e) => {
-                          const newArr = [...form.itinerary];
-                          newArr[index].title = e.target.value;
-                          setForm({ ...form, itinerary: newArr });
-                        }}
+                        onChange={(e) => updateStep(index, 'title', e.target.value)}
                         className="flex-1 bg-dark-3 border border-white/10 rounded px-2 py-1 text-sm text-cream focus:outline-none" />
                       <input type="text" placeholder="Description" value={step.description}
-                        onChange={(e) => {
-                          const newArr = [...form.itinerary];
-                          newArr[index].description = e.target.value;
-                          setForm({ ...form, itinerary: newArr });
-                        }}
+                        onChange={(e) => updateStep(index, 'description', e.target.value)}
                         className="flex-[2] bg-dark-3 border border-white/10 rounded px-2 py-1 text-sm text-cream focus:outline-none" />
                       <button type="button" onClick={() => setForm({ ...form, itinerary: form.itinerary.filter((_, i) => i !== index) })}
                         className="p-1 text-red-400 hover:text-red-300"><FiX size={16} /></button>
@@ -2544,7 +2553,7 @@ function NavLink({ onClick, icon, label, active, compact = false }) {
       } ${compact ? 'text-xs' : ''}`}
     >
       <span className="text-lg">{icon}</span>
-      <span>{label}</span>
+      <span className="flex-1">{label}</span>
     </button>
   );
 }
@@ -2566,14 +2575,14 @@ function StatCard({ title, value, change, trend, icon }) {
 }
 
 // ------------------------------------------------------------------
-// Modal de Confirmation Personnalisé (Remplace window.confirm)
+// Modal de Confirmation Personnalisé (remplace window.confirm)
 // ------------------------------------------------------------------
 function ConfirmModal({ isOpen, title, message, onConfirm, onCancel, isDanger = true }) {
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-fade-in">
-      <div 
+      <div
         className="bg-[#2A2A3C] border border-white/10 rounded-xl shadow-2xl max-w-md w-full p-6 animate-scale-in"
         onClick={(e) => e.stopPropagation()}
       >
@@ -2581,7 +2590,7 @@ function ConfirmModal({ isOpen, title, message, onConfirm, onCancel, isDanger = 
           <div className={`w-16 h-16 rounded-full flex items-center justify-center ${isDanger ? 'bg-red-500/10 text-red-400' : 'bg-gold/10 text-gold'}`}>
             <FiAlertTriangle size={32} />
           </div>
-          
+
           <div>
             <h3 className="text-xl font-serif text-cream">{title || 'Confirmer la suppression'}</h3>
             <p className="text-muted text-sm mt-2">
@@ -2599,8 +2608,8 @@ function ConfirmModal({ isOpen, title, message, onConfirm, onCancel, isDanger = 
             <button
               onClick={onConfirm}
               className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                isDanger 
-                  ? 'bg-red-500 text-white hover:bg-red-600 shadow-lg shadow-red-500/20' 
+                isDanger
+                  ? 'bg-red-500 text-white hover:bg-red-600 shadow-lg shadow-red-500/20'
                   : 'bg-gold text-dark-2 hover:bg-gold/90 shadow-lg shadow-gold/20'
               }`}
             >
