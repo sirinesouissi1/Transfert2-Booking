@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
@@ -8,6 +8,25 @@ import BookingCalendar from '../pages/BookingCalendar';
 import { Link, useNavigate } from 'react-router-dom';
 import { bookingAPI, vehicleAPI, excursionAPI, excursionBookingAPI, contactAPI } from '../services/api';
 import useAuthStore from '../context/authStore';
+import { ToastContext, ToastContainer, useToast, useToasts } from '../components/dashboard/Toast';
+import { useTableFilters, TableToolbar, Pagination, NoResults } from '../components/dashboard/TableTools';
+import {
+  AssignmentSection,
+  BookingQuickActions,
+  ContactButtons,
+  ConflictBadge,
+  CountBadge,
+  RowContactIcons,
+} from '../components/dashboard/BookingExtras';
+import {
+  downloadCSV,
+  transferColumns,
+  excursionBookingColumns,
+  clientColumns,
+  mergeAllBookings,
+  buildConflictMap,
+  resolveVehicleName,
+} from '../utils/bookingTools';
 import {
   FiAlertTriangle,
   FiMail,
@@ -70,9 +89,22 @@ const formatPrice = (value) => {
 };
 
 export default function Dashboard() {
+  const { toasts, toast } = useToasts();
+  return (
+    <ToastContext.Provider value={toast}>
+      <DashboardInner toast={toast} />
+      <ToastContainer toasts={toasts} onDismiss={toast.dismiss} />
+    </ToastContext.Provider>
+  );
+}
+
+function DashboardInner({ toast }) {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
   const isAdmin = user?.role === 'admin';
+  const prevPendingRef = useRef(null);
+  const prevUnreadRef = useRef(null);
+  const fetchingRef = useRef(false);
 
   // ---- États principaux ----
   const [excursionBookings, setExcursionBookings] = useState([]);
@@ -126,13 +158,17 @@ export default function Dashboard() {
     const months = {};
     bookings.forEach((b) => {
       const date = new Date(b.departureDate);
-      const monthYear = `${date.getMonth() + 1}/${date.getFullYear()}`;
-      months[monthYear] = (months[monthYear] || 0) + 1;
+      if (isNaN(date)) return;
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      months[key] = (months[key] || 0) + 1;
     });
-    return Object.entries(months).map(([name, value]) => ({ name, value }));
+    // Tri chronologique (l'ordre d'insertion ne l'était pas)
+    return Object.entries(months)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, value]) => ({ name: `${key.slice(5)}/${key.slice(0, 4)}`, value }));
   }, [bookings]);
 
-  const bookingsByStatus = useMemo(() => {
+const bookingsByStatus = useMemo(() => {
     const statusCount = { pending: 0, confirmed: 0, completed: 0, cancelled: 0 };
     bookings.forEach((b) => {
       if (statusCount[b.status] !== undefined) statusCount[b.status]++;
@@ -149,74 +185,146 @@ export default function Dashboard() {
     ];
   }, [bookings]);
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      let bookingsData = [];
-      if (isAdmin) {
-        const res = await bookingAPI.getAll();
-        bookingsData = res.data.bookings || [];
-      } else {
-        const res = await bookingAPI.getMy();
-        bookingsData = res.data.bookings || [];
+  const fetchData = useCallback(
+    async (silent = false) => {
+      if (fetchingRef.current) return;
+      fetchingRef.current = true;
+      if (!silent) {
+        setLoading(true);
+        setError(null);
       }
-      setBookings(bookingsData);
+      try {
+        let bookingsData = [];
+        if (isAdmin) {
+          const res = await bookingAPI.getAll();
+          bookingsData = res.data.bookings || [];
+        } else {
+          const res = await bookingAPI.getMy();
+          bookingsData = res.data.bookings || [];
+        }
+        setBookings(bookingsData);
 
-      if (isAdmin) {
-        // Clients uniques
-        const clientsMap = new Map();
-        bookingsData.forEach((b) => {
-          const key = b.email;
-          if (!clientsMap.has(key)) {
-            clientsMap.set(key, {
-              firstName: b.firstName,
-              lastName: b.lastName,
-              email: b.email,
-              phone: b.phone,
-              totalBookings: 1,
-              lastBooking: b.createdAt,
-            });
-          } else {
-            const existing = clientsMap.get(key);
-            existing.totalBookings += 1;
-            if (new Date(b.createdAt) > new Date(existing.lastBooking)) {
-              existing.lastBooking = b.createdAt;
+        if (isAdmin) {
+          // Clients uniques
+          const clientsMap = new Map();
+          bookingsData.forEach((b) => {
+            const key = b.email;
+            if (!clientsMap.has(key)) {
+              clientsMap.set(key, {
+                firstName: b.firstName,
+                lastName: b.lastName,
+                email: b.email,
+                phone: b.phone,
+                totalBookings: 1,
+                lastBooking: b.createdAt,
+              });
+            } else {
+              const existing = clientsMap.get(key);
+              existing.totalBookings += 1;
+              if (new Date(b.createdAt) > new Date(existing.lastBooking)) {
+                existing.lastBooking = b.createdAt;
+              }
             }
+          });
+          setClients(Array.from(clientsMap.values()));
+
+          const vehiclesRes = await vehicleAPI.getAll();
+          setVehicles(vehiclesRes.data.vehicles || []);
+
+          const excursionsRes = await excursionAPI.getAll({ limit: 100 });
+          setExcursions(excursionsRes.data.excursions || []);
+
+          const allExcursionBookings = await excursionBookingAPI.getAll();
+          const excBookingsData = allExcursionBookings.data.bookings || [];
+          setExcursionBookingsAll(excBookingsData);
+          setExcursionBookings(excBookingsData);
+
+          // Nouvelles réservations en attente depuis le dernier rafraîchissement
+          const pendingNow =
+            bookingsData.filter((b) => b.bookingType === 'transfer' && b.status === 'pending').length +
+            excBookingsData.filter((b) => b.status === 'pending').length;
+          if (silent && prevPendingRef.current !== null && pendingNow > prevPendingRef.current) {
+            const diff = pendingNow - prevPendingRef.current;
+            toast.info(`${diff} nouvelle${diff > 1 ? 's' : ''} réservation${diff > 1 ? 's' : ''} en attente.`);
           }
-        });
-        setClients(Array.from(clientsMap.values()));
+          prevPendingRef.current = pendingNow;
 
-        const vehiclesRes = await vehicleAPI.getAll();
-        setVehicles(vehiclesRes.data.vehicles || []);
-
-        const excursionsRes = await excursionAPI.getAll({ limit: 100 });
-        setExcursions(excursionsRes.data.excursions || []);
-
-        const allExcursionBookings = await excursionBookingAPI.getAll();
-        const excBookingsData = allExcursionBookings.data.bookings || [];
-        setExcursionBookingsAll(excBookingsData);
-        setExcursionBookings(excBookingsData);
-
-        // Contacts
-        const contactsRes = await contactAPI.getAll();
-        const contactsData = contactsRes.data.messages || [];
-        setContacts(contactsData);
-        setUnreadContacts(contactsData.filter((c) => !c.isRead).length);
+          // Contacts
+          const contactsRes = await contactAPI.getAll();
+          const contactsData = contactsRes.data.messages || [];
+          const unreadNow = contactsData.filter((c) => !c.isRead).length;
+          if (silent && prevUnreadRef.current !== null && unreadNow > prevUnreadRef.current) {
+            toast.info('Nouveau message de contact reçu.');
+          }
+          prevUnreadRef.current = unreadNow;
+          setContacts(contactsData);
+          setUnreadContacts(unreadNow);
+        }
+        if (silent) setError(null);
+      } catch (err) {
+        console.error('Erreur chargement données:', err);
+        // Un rafraîchissement automatique raté ne doit pas afficher d'erreur intrusive
+        if (!silent) setError('Impossible de charger les données. Veuillez réessayer.');
+      } finally {
+        fetchingRef.current = false;
+        if (!silent) setLoading(false);
       }
-    } catch (err) {
-      console.error('Erreur chargement données:', err);
-      setError('Impossible de charger les données. Veuillez réessayer.');
-    } finally {
-      setLoading(false);
-    }
-  }, [isAdmin]);
+    },
+    [isAdmin, toast]
+  );
 
+  // Chargement initial
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  const handleLogout = () => {
+  // Rafraîchissement automatique toutes les 60 s (onglet visible) + au retour sur l'onglet
+  useEffect(() => {
+    if (!isAdmin) return undefined;
+    const tick = () => {
+      if (document.visibilityState === 'visible') fetchData(true);
+    };
+    const id = setInterval(tick, 60000);
+    document.addEventListener('visibilitychange', tick);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', tick);
+    };
+  }, [isAdmin, fetchData]);
+
+  // ---- Dérivés : réservations en attente, fusion transferts + excursions, conflits ----
+  const transferBookings = useMemo(
+    () => bookings.filter((b) => b.bookingType === 'transfer'),
+    [bookings]
+  );
+  const pendingTransfers = useMemo(
+    () => transferBookings.filter((b) => b.status === 'pending').length,
+    [transferBookings]
+  );
+  const pendingExcursions = useMemo(
+    () => excursionBookingsAll.filter((b) => b.status === 'pending').length,
+    [excursionBookingsAll]
+  );
+  const pendingTotal = pendingTransfers + pendingExcursions;
+
+  // Les réservations d'excursion du endpoint dédié sont prioritaires (pas de doublon par code)
+  const allBookings = useMemo(
+    () => mergeAllBookings(excursionBookingsAll, bookings),
+    [excursionBookingsAll, bookings]
+  );
+  const conflictMap = useMemo(() => buildConflictMap(allBookings), [allBookings]);
+
+  // Compteur dans le titre de l'onglet : "(3) GO TAXI…"
+  useEffect(() => {
+    if (!isAdmin) return undefined;
+    const original = document.title.replace(/^\(\d+\)\s/, '');
+    document.title = pendingTotal > 0 ? `(${pendingTotal}) ${original}` : original;
+    return () => {
+      document.title = original;
+    };
+  }, [isAdmin, pendingTotal]);
+
+const handleLogout = () => {
     logout();
     navigate('/admin/login');
   };
@@ -259,9 +367,12 @@ export default function Dashboard() {
 
   // Suppression avec modal de confirmation personnalisé
   const handleDelete = (resource, id) => {
+    const isBooking = resource === 'transfer' || resource === 'excursionBooking';
     askConfirmation(
-      'Confirmer la suppression',
-      'Voulez-vous vraiment supprimer cet élément ? Cette action est irréversible.',
+      isBooking ? 'Annuler la réservation' : 'Confirmer la suppression',
+      isBooking
+        ? 'La réservation passera au statut « Annulé ». Voulez-vous continuer ?'
+        : 'Voulez-vous vraiment supprimer cet élément ? Cette action est irréversible.',
       async () => {
         try {
           if (resource === 'vehicle') {
@@ -273,9 +384,10 @@ export default function Dashboard() {
           } else if (resource === 'excursionBooking') {
             await excursionAPI.updateBookingStatus(id, { status: 'cancelled' });
           }
-          fetchData();
+          toast.success(isBooking ? 'Réservation annulée.' : 'Élément supprimé.');
+          fetchData(true);
         } catch (err) {
-          setError(`Erreur lors de la suppression : ${err.response?.data?.message || err.message}`);
+          toast.error(`Erreur lors de l'opération : ${err.response?.data?.message || err.message}`);
         } finally {
           closeConfirmModal();
         }
@@ -285,23 +397,52 @@ export default function Dashboard() {
 
   const handleUpdate = async (resource, id, data) => {
     try {
+      let res;
       if (resource === 'vehicle') {
-        await vehicleAPI.update(id, data);
+        res = await vehicleAPI.update(id, data);
       } else if (resource === 'excursion') {
-        await excursionAPI.update(id, data);
+        res = await excursionAPI.update(id, data);
       } else if (resource === 'transfer') {
-        await bookingAPI.updateStatus(id, { status: data.status });
+        res = await bookingAPI.updateStatus(id, { status: data.status, notifyClient: data.notifyClient });
       } else if (resource === 'excursionBooking') {
-        await excursionAPI.updateBookingStatus(id, { status: data.status });
+        res = await excursionAPI.updateBookingStatus(id, { status: data.status, notifyClient: data.notifyClient });
       }
-      fetchData();
+
+      if (resource === 'transfer' || resource === 'excursionBooking') {
+        let suffix = '';
+        if (data.notifyClient) {
+          const sent = res?.data?.emailSent;
+          suffix = sent === true ? ' Le client a été prévenu par email.' : sent === false ? ' (email non envoyé)' : '';
+        }
+        toast.success(`Statut mis à jour.${suffix}`);
+      } else {
+        toast.success(resource === 'vehicle' ? 'Véhicule mis à jour.' : 'Excursion mise à jour.');
+      }
+      fetchData(true);
       closeModal();
     } catch (err) {
-      setError(`Erreur lors de la mise à jour : ${err.response?.data?.message || err.message}`);
+      toast.error(`Erreur lors de la mise à jour : ${err.response?.data?.message || err.message}`);
     }
   };
 
-  const totalBookings = bookings.length;
+  // Affectation chauffeur + véhicule (voir BACKEND_NOTES.md pour les routes à ajouter)
+  const handleAssign = async (resource, id, data) => {
+    try {
+      const fn = resource === 'transfer' ? bookingAPI.assign : excursionAPI.assignBooking;
+      if (typeof fn !== 'function') {
+        throw new Error("route d'affectation non configurée dans services/api.js");
+      }
+      await fn(id, data);
+      toast.success('Affectation enregistrée.');
+      setSelectedItem((prev) => (prev ? { ...prev, ...data } : prev));
+      fetchData(true);
+    } catch (err) {
+      toast.error(`Affectation impossible : ${err.response?.data?.message || err.message}`);
+      throw err;
+    }
+  };
+
+const totalBookings = bookings.length;
   const totalSpent = bookings.reduce((acc, b) => acc + (b.total ?? b.totalPrice ?? 0), 0);
   const pendingBookings = bookings.filter((b) => b.status === 'pending').length;
   const completedBookings = bookings.filter((b) => b.status === 'completed').length;
@@ -490,6 +631,21 @@ export default function Dashboard() {
                 className="bg-gold text-dark-2 px-3 py-1 rounded text-xs font-medium hover:bg-gold/90 whitespace-nowrap"
               >
                 Voir les messages
+              </button>
+            </div>
+          )}
+
+          {isAdmin && pendingTotal > 0 && currentView === 'dashboard' && (
+            <div className="mb-6 p-4 bg-yellow-400/10 border border-yellow-400/30 text-yellow-400 rounded flex items-center justify-between gap-3 animate-fade-in">
+              <div className="flex items-center gap-3">
+                <FiClock size={20} />
+                <span><strong>{pendingTotal}</strong> réservation(s) en attente de confirmation.</span>
+              </div>
+              <button
+                onClick={() => goTo(pendingTransfers > 0 ? 'transferts' : 'excursionBookings')}
+                className="bg-yellow-400 text-dark-2 px-3 py-1 rounded text-xs font-medium hover:bg-yellow-400/90 whitespace-nowrap"
+              >
+                Voir les réservations
               </button>
             </div>
           )}
@@ -708,9 +864,11 @@ export default function Dashboard() {
 
           {currentView === 'transferts' && (
             <TransferList
-              bookings={bookings.filter((b) => b.bookingType === 'transfer')}
+              bookings={transferBookings}
               loading={loading}
               isAdmin={isAdmin}
+              conflictMap={conflictMap}
+              vehicles={vehicles}
               onView={(transfer) => openViewModal('transfer', transfer)}
               onEdit={(transfer) => openEditModal('transfer', transfer)}
               onDelete={(id) => handleDelete('transfer', id)}
@@ -722,6 +880,8 @@ export default function Dashboard() {
               bookings={excursionBookings}
               loading={loading}
               isAdmin={isAdmin}
+              conflictMap={conflictMap}
+              vehicles={vehicles}
               onView={(booking) => openViewModal('excursionBooking', booking)}
               onEdit={(booking) => openEditModal('excursionBooking', booking)}
               onDelete={(id) => handleDelete('excursionBooking', id)}
@@ -734,7 +894,7 @@ export default function Dashboard() {
               excursionBookings={excursionBookingsAll}
               vehicles={vehicles}
               excursions={excursions}
-              onRefresh={fetchData}
+              onRefresh={() => fetchData(true)}
             />
           )}
 
@@ -778,9 +938,10 @@ export default function Dashboard() {
                             onClick={async () => {
                               try {
                                 await contactAPI.markRead(c._id);
-                                fetchData();
+                                toast.success('Message marqué comme lu.');
+                                fetchData(true);
                               } catch (err) {
-                                setError(`Erreur : ${err.response?.data?.message || err.message}`);
+                                toast.error(`Erreur : ${err.response?.data?.message || err.message}`);
                               }
                             }}
                             className="text-xs bg-gold text-dark-2 px-3 py-1.5 rounded hover:bg-gold/90 font-medium"
@@ -796,9 +957,10 @@ export default function Dashboard() {
                               async () => {
                                 try {
                                   await contactAPI.delete(c._id);
-                                  fetchData();
+                                  toast.success('Message supprimé.');
+                                  fetchData(true);
                                 } catch (err) {
-                                  setError(`Erreur : ${err.response?.data?.message || err.message}`);
+                                  toast.error(`Erreur : ${err.response?.data?.message || err.message}`);
                                 } finally {
                                   closeConfirmModal();
                                 }
@@ -826,6 +988,9 @@ export default function Dashboard() {
           type={modalType}
           onClose={closeModal}
           onUpdate={handleUpdate}
+          vehicles={vehicles}
+          allBookings={allBookings}
+          onAssign={handleAssign}
           isAdmin={isAdmin}
         />
       )}
@@ -835,8 +1000,9 @@ export default function Dashboard() {
           resource={createResource}
           onClose={closeCreateModal}
           onCreated={() => {
+            toast.success(createResource === 'vehicle' ? 'Véhicule créé avec succès.' : 'Excursion créée avec succès.');
             closeCreateModal();
-            fetchData();
+            fetchData(true);
           }}
         />
       )}
@@ -959,10 +1125,8 @@ function VehicleDestinationPricing({ vehicle, isAdmin, onBack }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vehicle._id]);
 
-  const showSuccess = (msg) => {
-    setSuccessMsg(msg);
-    setTimeout(() => setSuccessMsg(''), 2500);
-  };
+  const toast = useToast();
+  const showSuccess = (msg) => toast.success(msg);
 
   const handleAdd = async () => {
     if (!addForm.from.trim() || !addForm.to.trim() || !addForm.price) {
@@ -1037,7 +1201,7 @@ function VehicleDestinationPricing({ vehicle, isAdmin, onBack }) {
       await fetchPrices();
       showSuccess('Tarif supprimé.');
     } catch (err) {
-      setAddError('Erreur lors de la suppression du tarif.');
+      toast.error('Erreur lors de la suppression du tarif.');
     }
   };
 
@@ -1232,12 +1396,13 @@ function VehicleDestinationPricing({ vehicle, isAdmin, onBack }) {
   );
 }
 
-function ActionButtons({ onView, onEdit, onDelete, isAdmin }) {
+function ActionButtons({ onView, onEdit, onDelete, isAdmin, extra }) {
   return (
     <div className="flex items-center gap-2">
       <button onClick={onView} className="p-1 text-muted hover:text-gold transition-colors" title="Voir">
         <FiEye size={18} />
       </button>
+      {isAdmin && extra}
       {isAdmin && onEdit && (
         <button onClick={onEdit} className="p-1 text-muted hover:text-gold transition-colors" title="Modifier">
           <FiEdit2 size={18} />
@@ -1252,12 +1417,78 @@ function ActionButtons({ onView, onEdit, onDelete, isAdmin }) {
   );
 }
 
+// Fonctions de recherche / filtre (stables, définies hors composants)
+const clientSearch = (c) => `${c.firstName || ''} ${c.lastName || ''} ${c.email || ''} ${c.phone || ''}`;
+const clientDate = (c) => c.lastBooking;
+const vehicleSearch = (v) => `${v.name || ''} ${v.description || ''}`;
+const excursionSearch = (e) => `${e.name || ''} ${e.destination || ''} ${e.duration || ''}`;
+const bookingSearch = (b) =>
+  [
+    b.confirmationCode,
+    b.firstName,
+    b.lastName,
+    `${b.firstName || ''} ${b.lastName || ''}`,
+    b.email,
+    b.phone,
+    b.from,
+    b.to,
+    b.excursion?.name,
+    b.vehicle?.name,
+    b.assignedDriver,
+  ]
+    .filter(Boolean)
+    .join(' ');
+const bookingDate = (b) => b.departureDate || b.preferredDate;
+const bookingStatus = (b) => b.status;
+
+function TableCard({ f, children }) {
+  return (
+    <div className="bg-[#2A2A3C] border border-white/10">
+      <div className="overflow-x-auto">{children}</div>
+      <NoResults f={f} />
+      <Pagination f={f} />
+    </div>
+  );
+}
+
+// Véhicule demandé par le client + affectation interne (chauffeur / véhicule)
+function AssignmentCell({ b, vehicles }) {
+  const assignedName = b.assignedVehicle ? resolveVehicleName({ assignedVehicle: b.assignedVehicle }, vehicles) : '';
+  return (
+    <div>
+      <div>{b.vehicle?.name || '-'}</div>
+      {(assignedName || b.assignedDriver) && (
+        <div className="text-xs text-muted mt-0.5">
+          {assignedName && <>Affecté : {assignedName}</>}
+          {assignedName && b.assignedDriver && ' · '}
+          {b.assignedDriver && <>Chauffeur : {b.assignedDriver}</>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ClientList({ clients, loading, isAdmin, onView }) {
+  const toast = useToast();
+  const f = useTableFilters(clients, { searchText: clientSearch, getDate: clientDate });
   if (loading) return <div className="text-center py-12">Chargement des clients...</div>;
+
+  const handleExport = () => {
+    downloadCSV('clients', clientColumns, f.filtered);
+    toast.success(`${f.filtered.length} client(s) exporté(s).`);
+  };
+
   return (
     <div>
       <h1 className="text-2xl font-serif mb-6">Clients</h1>
-      <div className="bg-[#2A2A3C] border border-white/10 overflow-x-auto">
+      <TableToolbar
+        f={f}
+        placeholder="Rechercher (nom, email, téléphone)…"
+        showPeriod
+        periodLabel="Dernière activité"
+        onExport={handleExport}
+      />
+      <TableCard f={f}>
         <table className="w-full text-sm">
           <thead className="bg-[#35354A] border-b border-white/10">
             <tr>
@@ -1270,7 +1501,7 @@ function ClientList({ clients, loading, isAdmin, onView }) {
             </tr>
           </thead>
           <tbody>
-            {clients.map((client) => (
+            {f.pageItems.map((client) => (
               <tr key={client.email} className="border-b border-white/10 hover:bg-white/5">
                 <td className="px-6 py-4">{client.firstName} {client.lastName}</td>
                 <td className="px-6 py-4">
@@ -1286,18 +1517,23 @@ function ClientList({ clients, loading, isAdmin, onView }) {
                   {new Date(client.lastBooking).toLocaleDateString('fr-FR')}
                 </td>
                 <td className="px-6 py-4">
-                  <ActionButtons onView={() => onView(client)} isAdmin={isAdmin} />
+                  <ActionButtons
+                    onView={() => onView(client)}
+                    isAdmin={isAdmin}
+                    extra={<RowContactIcons data={client} />}
+                  />
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-      </div>
+      </TableCard>
     </div>
   );
 }
 
 function VehicleList({ vehicles, loading, isAdmin, onCreate, onView, onEdit, onDelete }) {
+  const f = useTableFilters(vehicles, { searchText: vehicleSearch });
   if (loading) return <div className="text-center py-12">Chargement des véhicules...</div>;
   return (
     <div>
@@ -1312,7 +1548,8 @@ function VehicleList({ vehicles, loading, isAdmin, onCreate, onView, onEdit, onD
           </button>
         )}
       </div>
-      <div className="bg-[#2A2A3C] border border-white/10 overflow-x-auto">
+      <TableToolbar f={f} placeholder="Rechercher un véhicule…" />
+      <TableCard f={f}>
         <table className="w-full text-sm">
           <thead className="bg-[#35354A] border-b border-white/10">
             <tr>
@@ -1325,7 +1562,7 @@ function VehicleList({ vehicles, loading, isAdmin, onCreate, onView, onEdit, onD
             </tr>
           </thead>
           <tbody>
-            {vehicles.map((v) => (
+            {f.pageItems.map((v) => (
               <tr key={v._id} className="border-b border-white/10 hover:bg-white/5">
                 <td className="px-6 py-4">
                   {v.image ? (
@@ -1352,12 +1589,13 @@ function VehicleList({ vehicles, loading, isAdmin, onCreate, onView, onEdit, onD
             ))}
           </tbody>
         </table>
-      </div>
+      </TableCard>
     </div>
   );
 }
 
 function ExcursionList({ excursions, loading, isAdmin, onCreate, onView, onEdit, onDelete }) {
+  const f = useTableFilters(excursions, { searchText: excursionSearch });
   if (loading) return <div className="text-center py-12">Chargement des excursions...</div>;
   return (
     <div>
@@ -1372,7 +1610,8 @@ function ExcursionList({ excursions, loading, isAdmin, onCreate, onView, onEdit,
           </button>
         )}
       </div>
-      <div className="bg-[#2A2A3C] border border-white/10 overflow-x-auto">
+      <TableToolbar f={f} placeholder="Rechercher (nom, destination)…" />
+      <TableCard f={f}>
         <table className="w-full text-sm">
           <thead className="bg-[#35354A] border-b border-white/10">
             <tr>
@@ -1385,7 +1624,7 @@ function ExcursionList({ excursions, loading, isAdmin, onCreate, onView, onEdit,
             </tr>
           </thead>
           <tbody>
-            {excursions.map((e) => (
+            {f.pageItems.map((e) => (
               <tr key={e._id} className="border-b border-white/10 hover:bg-white/5">
                 <td className="px-6 py-4">
                   <img
@@ -1409,17 +1648,33 @@ function ExcursionList({ excursions, loading, isAdmin, onCreate, onView, onEdit,
             ))}
           </tbody>
         </table>
-      </div>
+      </TableCard>
     </div>
   );
 }
 
-function TransferList({ bookings, loading, isAdmin, onView, onEdit, onDelete }) {
+function TransferList({ bookings, loading, isAdmin, onView, onEdit, onDelete, conflictMap, vehicles = [] }) {
+  const toast = useToast();
+  const f = useTableFilters(bookings, { searchText: bookingSearch, getDate: bookingDate, getStatus: bookingStatus });
   if (loading) return <div className="text-center py-12">Chargement des transferts...</div>;
+
+  const handleExport = () => {
+    downloadCSV('transferts', transferColumns(vehicles), f.filtered);
+    toast.success(`${f.filtered.length} transfert(s) exporté(s).`);
+  };
+
   return (
     <div>
       <h1 className="text-2xl font-serif mb-6">Réservations Transferts</h1>
-      <div className="bg-[#2A2A3C] border border-white/10 overflow-x-auto">
+      <TableToolbar
+        f={f}
+        placeholder="Rechercher (nom, code, email, trajet)…"
+        statusLabels={STATUS_LABELS}
+        showPeriod
+        periodLabel="Date du transfert"
+        onExport={handleExport}
+      />
+      <TableCard f={f}>
         <table className="w-full text-sm">
           <thead className="bg-[#35354A] border-b border-white/10">
             <tr>
@@ -1434,13 +1689,18 @@ function TransferList({ bookings, loading, isAdmin, onView, onEdit, onDelete }) 
             </tr>
           </thead>
           <tbody>
-            {bookings.map((b) => (
+            {f.pageItems.map((b) => (
               <tr key={b._id} className="border-b border-white/10 hover:bg-white/5">
-                <td className="p-4 font-mono text-gold">{b.confirmationCode}</td>
+                <td className="p-4 font-mono text-gold">
+                  <span className="inline-flex items-center gap-2">
+                    {b.confirmationCode}
+                    <ConflictBadge conflicts={conflictMap?.get(b._id)} />
+                  </span>
+                </td>
                 <td className="p-4">{b.firstName} {b.lastName}</td>
                 <td className="p-4">{b.from} → {b.to}</td>
                 <td className="p-4">{new Date(b.departureDate).toLocaleDateString('fr-FR')}</td>
-                <td className="p-4">{b.vehicle?.name || '-'}</td>
+                <td className="p-4"><AssignmentCell b={b} vehicles={vehicles} /></td>
                 <td className="p-4">{formatPrice(b.totalPrice ?? b.total)}</td>
                 <td className="p-4">
                   <span className={`text-xs border px-2 py-1 ${STATUS_STYLES[b.status] || ''}`}>
@@ -1448,23 +1708,45 @@ function TransferList({ bookings, loading, isAdmin, onView, onEdit, onDelete }) 
                   </span>
                 </td>
                 <td className="p-4">
-                  <ActionButtons onView={() => onView(b)} onEdit={() => onEdit(b)} onDelete={() => onDelete(b._id)} isAdmin={isAdmin} />
+                  <ActionButtons
+                    onView={() => onView(b)}
+                    onEdit={() => onEdit(b)}
+                    onDelete={() => onDelete(b._id)}
+                    isAdmin={isAdmin}
+                    extra={<RowContactIcons data={b} />}
+                  />
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-      </div>
+      </TableCard>
     </div>
   );
 }
 
-function ExcursionBookingList({ bookings, loading, isAdmin, onView, onEdit, onDelete }) {
+function ExcursionBookingList({ bookings, loading, isAdmin, onView, onEdit, onDelete, conflictMap, vehicles = [] }) {
+  const toast = useToast();
+  const f = useTableFilters(bookings, { searchText: bookingSearch, getDate: bookingDate, getStatus: bookingStatus });
   if (loading) return <div className="text-center py-12">Chargement des réservations d'excursions...</div>;
+
+  const handleExport = () => {
+    downloadCSV('reservations-excursions', excursionBookingColumns(vehicles), f.filtered);
+    toast.success(`${f.filtered.length} réservation(s) exportée(s).`);
+  };
+
   return (
     <div>
       <h1 className="text-2xl font-serif mb-6">Réservations Excursions</h1>
-      <div className="bg-[#2A2A3C] border border-white/10 overflow-x-auto">
+      <TableToolbar
+        f={f}
+        placeholder="Rechercher (nom, code, email, excursion)…"
+        statusLabels={STATUS_LABELS}
+        showPeriod
+        periodLabel="Date de l'excursion"
+        onExport={handleExport}
+      />
+      <TableCard f={f}>
         <table className="w-full text-sm">
           <thead className="bg-[#35354A] border-b border-white/10">
             <tr>
@@ -1473,19 +1755,35 @@ function ExcursionBookingList({ bookings, loading, isAdmin, onView, onEdit, onDe
               <th className="p-4 text-left text-muted font-medium">Excursion</th>
               <th className="p-4 text-left text-muted font-medium">Date préférée</th>
               <th className="p-4 text-left text-muted font-medium">Taille du groupe</th>
+              <th className="p-4 text-left text-muted font-medium">Affectation</th>
               <th className="p-4 text-left text-muted font-medium">Prix</th>
               <th className="p-4 text-left text-muted font-medium">Statut</th>
               <th className="p-4 text-left text-muted font-medium">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {bookings.map((b) => (
+            {f.pageItems.map((b) => (
               <tr key={b._id} className="border-b border-white/10 hover:bg-white/5">
-                <td className="p-4 font-mono text-gold">{b.confirmationCode}</td>
+                <td className="p-4 font-mono text-gold">
+                  <span className="inline-flex items-center gap-2">
+                    {b.confirmationCode}
+                    <ConflictBadge conflicts={conflictMap?.get(b._id)} />
+                  </span>
+                </td>
                 <td className="p-4">{b.firstName} {b.lastName}</td>
                 <td className="p-4">{b.excursion?.name || '-'}</td>
                 <td className="p-4">{new Date(b.preferredDate).toLocaleDateString('fr-FR')}</td>
                 <td className="p-4">{b.groupSize} pers.</td>
+                <td className="p-4 text-xs text-muted">
+                  {b.assignedVehicle || b.assignedDriver ? (
+                    <>
+                      {b.assignedVehicle && <div>{resolveVehicleName({ assignedVehicle: b.assignedVehicle }, vehicles) || 'Véhicule affecté'}</div>}
+                      {b.assignedDriver && <div>{b.assignedDriver}</div>}
+                    </>
+                  ) : (
+                    '-'
+                  )}
+                </td>
                 <td className="p-4">{formatPrice(b.totalPrice ?? b.total)}</td>
                 <td className="p-4">
                   <span className={`text-xs border px-2 py-1 ${STATUS_STYLES[b.status] || ''}`}>
@@ -1493,13 +1791,19 @@ function ExcursionBookingList({ bookings, loading, isAdmin, onView, onEdit, onDe
                   </span>
                 </td>
                 <td className="p-4">
-                  <ActionButtons onView={() => onView(b)} onEdit={() => onEdit(b)} onDelete={() => onDelete(b._id)} isAdmin={isAdmin} />
+                  <ActionButtons
+                    onView={() => onView(b)}
+                    onEdit={() => onEdit(b)}
+                    onDelete={() => onDelete(b._id)}
+                    isAdmin={isAdmin}
+                    extra={<RowContactIcons data={b} />}
+                  />
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-      </div>
+      </TableCard>
     </div>
   );
 }
@@ -1561,9 +1865,10 @@ function DetailHero({ src, alt, fallback }) {
 // ------------------------------------------------------------------
 // Modal VUE / ÉDITION (avec upload image pour véhicule & excursion)
 // ------------------------------------------------------------------
-function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin }) {
+function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin, vehicles = [], allBookings = [], onAssign }) {
   const [formData, setFormData] = useState(item || {});
   const [status, setStatus] = useState(item?.status || 'pending');
+  const [notifyClient, setNotifyClient] = useState(true);
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
 
@@ -1593,7 +1898,7 @@ function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin }) {
     if (type !== 'edit') return;
 
     if (resource === 'transfer' || resource === 'excursionBooking') {
-      onUpdate(resource, item._id, { status });
+      onUpdate(resource, item._id, { status, notifyClient: notifyClient && status !== item.status });
       return;
     }
 
@@ -1713,6 +2018,9 @@ function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin }) {
                 <div className="text-xs text-muted">{item.totalBookings} réservation(s)</div>
               </div>
             </div>
+            <div className="flex flex-wrap gap-2">
+              <ContactButtons data={item} />
+            </div>
             <DetailSection title="Contact" icon={<FiUsers />}>
               <DetailRow label="Email">
                 <a href={`mailto:${item.email}`} className="text-gold hover:underline">{item.email}</a>
@@ -1738,6 +2046,7 @@ function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin }) {
               </div>
               <StatusBadge status={item.status} />
             </div>
+            <BookingQuickActions booking={item} vehicles={vehicles} />
             <DetailSection title="Client" icon={<FiUsers />}>
               <DetailRow label="Nom">{item.firstName} {item.lastName}</DetailRow>
               <DetailRow label="Email">
@@ -1753,6 +2062,16 @@ function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin }) {
               <DetailRow label="Date">{fmtDate(item.departureDate)}</DetailRow>
               <DetailRow label="Véhicule">{item.vehicle?.name}</DetailRow>
             </DetailSection>
+            {isAdmin && onAssign && (
+              <AssignmentSection
+                key={item._id}
+                item={item}
+                resource={resource}
+                vehicles={vehicles}
+                allBookings={allBookings}
+                onAssign={onAssign}
+              />
+            )}
             <DetailSection title="Paiement" icon={<FiDollarSign />}>
               <DetailRow label="Prix total">
                 <span className="text-gold font-medium">{formatPrice(item.totalPrice ?? item.total)}</span>
@@ -1771,6 +2090,7 @@ function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin }) {
               </div>
               <StatusBadge status={item.status} />
             </div>
+            <BookingQuickActions booking={item} vehicles={vehicles} />
             <DetailSection title="Client" icon={<FiUsers />}>
               <DetailRow label="Nom">{item.firstName} {item.lastName}</DetailRow>
               <DetailRow label="Email">
@@ -1789,6 +2109,16 @@ function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin }) {
               <DetailRow label="Point de départ">{item.departurePoint}</DetailRow>
               {item.specialRequests && <DetailRow label="Demandes">{item.specialRequests}</DetailRow>}
             </DetailSection>
+            {isAdmin && onAssign && (
+              <AssignmentSection
+                key={item._id}
+                item={item}
+                resource={resource}
+                vehicles={vehicles}
+                allBookings={allBookings}
+                onAssign={onAssign}
+              />
+            )}
             <DetailSection title="Paiement" icon={<FiDollarSign />}>
               <DetailRow label="Prix total">
                 <span className="text-gold font-medium">{formatPrice(item.totalPrice ?? item.total)}</span>
@@ -1819,6 +2149,15 @@ function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin }) {
             </select>
           </div>
           <div className="flex justify-end gap-3">
+            <label className="mr-auto flex items-center gap-2 text-xs text-muted cursor-pointer">
+              <input
+                type="checkbox"
+                checked={notifyClient}
+                onChange={(e) => setNotifyClient(e.target.checked)}
+                className="accent-gold"
+              />
+              Prévenir le client par email
+            </label>
             <button type="button" onClick={onClose} className="px-4 py-2 text-muted hover:text-cream">Annuler</button>
             <button type="submit" className="px-4 py-2 bg-gold text-dark-2 rounded">Mettre à jour</button>
           </div>
@@ -2544,7 +2883,7 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
   );
 }
 
-function NavLink({ onClick, icon, label, active, compact = false }) {
+function NavLink({ onClick, icon, label, active, compact = false, badge = 0 }) {
   return (
     <button
       onClick={onClick}
@@ -2554,6 +2893,7 @@ function NavLink({ onClick, icon, label, active, compact = false }) {
     >
       <span className="text-lg">{icon}</span>
       <span className="flex-1">{label}</span>
+      <CountBadge n={badge} />
     </button>
   );
 }
