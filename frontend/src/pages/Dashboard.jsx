@@ -2168,7 +2168,7 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
           fd.append('coverImage', imageFile);
         }
                 // ⬇️ AJOUT : Nettoyer et envoyer les prix par point de départ
-        const cleanedDeparturePrices = {};
+      const cleanedDeparturePrices = {};
         Object.entries(form.departurePrices || {}).forEach(([city, prices]) => {
           const cleaned = {};
           Object.entries(prices).forEach(([size, price]) => {
@@ -2176,10 +2176,9 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
           });
           if (Object.keys(cleaned).length > 0) cleanedDeparturePrices[city] = cleaned;
         });
-
         fd.append('departurePrices', JSON.stringify(cleanedDeparturePrices));
 
-        // (Ce code existait déjà ↓)
+        // ⬇️ UN SEUL ENVOI DE L'IMAGE (le bon)
         if (imageFile) {
           fd.append('coverImage', imageFile);
         }
