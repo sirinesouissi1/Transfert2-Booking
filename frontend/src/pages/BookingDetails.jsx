@@ -256,10 +256,78 @@ const ALL_COUNTRIES = [
     { name: "Zimbabwe", code: "+263", flag: "🇿🇼" }
 ].sort((a, b) => a.name.localeCompare(b.name));
 
+// Longueur attendue du numéro local (sans le préfixe pays) par code pays.
+// Basé sur les standards E.164 / plans de numérotation nationaux.
+// Si un pays n'est pas listé, on autorise 6 à 15 chiffres.
+const PHONE_LENGTHS = {
+  '+216': 8,   // Tunisie
+  '+33': 9,    // France
+  '+32': 9,    // Belgique
+  '+41': 9,    // Suisse
+  '+49': [10, 11], // Allemagne (variable)
+  '+39': [9, 10],  // Italie
+  '+34': 9,    // Espagne
+  '+44': 10,   // Royaume-Uni
+  '+1': 10,    // USA / Canada
+  '+212': 9,   // Maroc
+  '+213': 9,   // Algérie
+  '+20': 10,   // Égypte
+  '+966': 9,   // Arabie saoudite
+  '+971': 9,   // Émirats
+  '+974': 8,   // Qatar
+  '+965': 8,   // Koweït
+  '+973': 8,   // Bahreïn
+  '+968': 8,   // Oman
+  '+90': 10,   // Turquie
+  '+7': 10,    // Russie
+  '+55': [10, 11], // Brésil
+  '+86': 11,   // Chine
+  '+81': 10,   // Japon
+  '+91': 10,   // Inde
+  '+61': 9,    // Australie
+  '+27': 9,    // Afrique du Sud
+  '+221': 9,   // Sénégal
+  '+225': 10,  // Côte d'Ivoire
+  '+237': 9,   // Cameroun
+};
+
+// Retourne un tableau de longueurs acceptées pour un préfixe donné
+const getAllowedLengths = (prefixCode) => {
+  const v = PHONE_LENGTHS[prefixCode];
+  if (Array.isArray(v)) return v;
+  if (typeof v === 'number') return [v];
+  return null; // inconnu → règle générique
+};
+
+
 export default function BookingDetails() {
   const location = useLocation();
   const navigate = useNavigate();
   const params = new URLSearchParams(location.search);
+
+const [phoneError, setPhoneError] = useState('');
+
+// Valide le numéro selon le préfixe. Retourne un message d'erreur ou ''
+const validatePhone = (phone, prefix) => {
+  const digits = (phone || '').replace(/\D/g, '');
+  if (!digits) return ''; // vide → géré par validateForm (champ requis)
+
+  const allowed = getAllowedLengths(prefix.code);
+
+  if (allowed) {
+    if (!allowed.includes(digits.length)) {
+      const expected = allowed.join(' ou ');
+      return `Le numéro doit contenir ${expected} chiffre${allowed.length > 1 ? 's' : ''} pour ${prefix.name} (${prefix.code}). Actuellement : ${digits.length}.`;
+    }
+    return '';
+  }
+
+  // Règle générique pour les pays non listés
+  if (digits.length < 6 || digits.length > 15) {
+    return 'Le numéro doit contenir entre 6 et 15 chiffres.';
+  }
+  return '';
+};
 
   // Récupération des données : price peut être null (si absent)
   const bookingData = useMemo(() => ({
@@ -284,15 +352,22 @@ export default function BookingDetails() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const validateForm = () => {
-    const errors = [];
-    if (!formData.prenom.trim()) errors.push('Prénom');
-    if (!formData.nom.trim()) errors.push('Nom');
-    if (!formData.email.trim()) errors.push('Email');
-    if (!formData.phone.trim()) errors.push('Téléphone');
-    return errors;
-  };
-
+const validateForm = () => {
+  const errors = [];
+  if (!formData.prenom.trim()) errors.push('Prénom');
+  if (!formData.nom.trim()) errors.push('Nom');
+  if (!formData.email.trim()) errors.push('Email');
+  if (!formData.phone.trim()) errors.push('Téléphone');
+  else {
+    const phoneErr = validatePhone(formData.phone, formData.prefix);
+    if (phoneErr) {
+      // On affiche aussi l'erreur sous le champ
+      setPhoneError(phoneErr);
+      errors.push(`Téléphone (${phoneErr})`);
+    }
+  }
+  return errors;
+};
  const handleConfirm = async (e) => {
   e.preventDefault();
 
@@ -305,7 +380,16 @@ export default function BookingDetails() {
     });
     return;
   }
-
+const phoneErr = validatePhone(formData.phone, formData.prefix);
+if (phoneErr) {
+  setPhoneError(phoneErr);
+  toast.error(phoneErr, {
+    duration: 5000,
+    style: { background: '#1A1A24', color: '#F8F5EE', border: '1px solid #C9A84C', borderRadius: '4px' },
+    iconTheme: { primary: '#ef4444', secondary: '#0A0A0F' },
+  });
+  return;
+}
   setIsSubmitting(true);
 
   try {
@@ -404,20 +488,37 @@ export default function BookingDetails() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="text-[10px] uppercase tracking-[3px] text-gold/60 ml-1">Numéro de téléphone</label>
-                    <div className="flex gap-2 h-12">
-                        <GlobalCountrySelect 
-                            selected={formData.prefix} 
-                            onSelect={(c) => setFormData({...formData, prefix: c})} 
-                        />
-                        <input 
-                            type="tel" 
-                            className="flex-1 bg-white/5 border border-white/10 px-4 py-3 text-sm focus:border-gold outline-none text-cream transition-all"
-                            placeholder="00 00 00 00"
-                            onChange={e => setFormData({...formData, phone: e.target.value})}
-                        />
-                    </div>
-                  </div>
+  <label className="text-[10px] uppercase tracking-[3px] text-gold/60 ml-1">Numéro de téléphone</label>
+  <div className="flex gap-2 h-12">
+    <GlobalCountrySelect
+      selected={formData.prefix}
+      onSelect={(c) => {
+        setFormData({ ...formData, prefix: c });
+        // Revalide avec le nouveau préfixe
+        setPhoneError(validatePhone(formData.phone, c));
+      }}
+    />
+    <input
+      type="tel"
+      value={formData.phone}
+      className={`flex-1 bg-white/5 border px-4 py-3 text-sm focus:outline-none text-cream transition-all ${
+        phoneError ? 'border-red-500/60 focus:border-red-500' : 'border-white/10 focus:border-gold'
+      }`}
+      placeholder="00 00 00 00"
+      onChange={e => {
+        const val = e.target.value;
+        setFormData({ ...formData, phone: val });
+        setPhoneError(validatePhone(val, formData.prefix));
+      }}
+    />
+  </div>
+  {phoneError && (
+    <p className="text-red-400 text-[11px] mt-1 ml-1 flex items-center gap-1.5 animate-fade-in">
+      <span className="inline-block w-1 h-1 rounded-full bg-red-400" />
+      {phoneError}
+    </p>
+  )}
+</div>
 
                   <FormInput label="Numéro de Vol" icon={<Plane size={16}/>} onChange={v => setFormData({...formData, flightNumber: v})} />
                 </div>
