@@ -10,6 +10,7 @@ const userSchema = new mongoose.Schema(
     phone:     { type: String, trim: true },
     role:      { type: String, enum: ['user', 'admin'], default: 'user' }, // ← gestion admin
     avatar:    { type: String, default: '' },
+    lastActivityAt: { type: Date, default: Date.now },
     // resetPasswordToken: String,
     // resetPasswordExpire: Date,
   },

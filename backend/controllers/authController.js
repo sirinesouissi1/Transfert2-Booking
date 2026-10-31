@@ -1,10 +1,20 @@
+// controllers/authController.js
 const asyncHandler = require('express-async-handler');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
-// Générer le token JWT
-const generateToken = (id) =>
-  jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '30d' });
+// Helper unique : signe le token ET initialise lastActivityAt
+const signTokenAndTouch = async (user) => {
+  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRES_IN || '2h',
+  });
+
+  // 🔒 Initialise le timeout d'inactivité serveur
+  user.lastActivityAt = new Date();
+  await user.save({ validateBeforeSave: false });
+
+  return token;
+};
 
 // @desc   Inscription (création de compte)
 // @route  POST /api/auth/register
@@ -12,20 +22,18 @@ const generateToken = (id) =>
 exports.register = asyncHandler(async (req, res) => {
   const { firstName, lastName, email, password, phone } = req.body;
 
-  // Vérifier si l'email existe déjà
   const exists = await User.findOne({ email });
   if (exists) {
     res.status(400);
     throw new Error('Email déjà utilisé');
   }
 
-  // Créer l'utilisateur (rôle 'user' par défaut)
   const user = await User.create({ firstName, lastName, email, password, phone });
+  const token = await signTokenAndTouch(user);
 
-  // Réponse sans le mot de passe
   res.status(201).json({
     success: true,
-    token: generateToken(user._id),
+    token,
     user: {
       _id: user._id,
       firstName: user.firstName,
@@ -38,7 +46,7 @@ exports.register = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc   Connexion
+// @desc   Connexion (clients uniquement — les admins doivent passer par /admin/login)
 // @route  POST /api/auth/login
 // @access Public
 exports.login = asyncHandler(async (req, res) => {
@@ -49,15 +57,17 @@ exports.login = asyncHandler(async (req, res) => {
     res.status(401);
     throw new Error('Email ou mot de passe incorrect');
   }
-  // ajoute juste après :
-if (user.role === 'admin') {
-  res.status(403);
-  throw new Error('Utilisez la connexion admin');
-}
+
+  if (user.role === 'admin') {
+    res.status(403);
+    throw new Error('Utilisez la connexion admin');
+  }
+
+  const token = await signTokenAndTouch(user);
 
   res.json({
     success: true,
-    token: generateToken(user._id),
+    token,
     user: {
       _id: user._id,
       firstName: user.firstName,
@@ -112,21 +122,31 @@ exports.changePassword = asyncHandler(async (req, res) => {
 exports.adminLogin = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
-  const user = await User.findOne({ email: email?.toLowerCase() }).select('+password');
+  const adminEmail = (process.env.ADMIN_EMAIL || '').toLowerCase();
+  const normalizedEmail = email?.toLowerCase();
+
+  if (!adminEmail || !normalizedEmail) {
+    res.status(401);
+    throw new Error('Identifiants admin incorrects');
+  }
+
+  const user = await User.findOne({ email: normalizedEmail }).select('+password');
 
   if (
     !user ||
     user.role !== 'admin' ||
-    user.email !== process.env.ADMIN_EMAIL.toLowerCase() ||
+    user.email.toLowerCase() !== adminEmail ||
     !(await user.matchPassword(password))
   ) {
     res.status(401);
     throw new Error('Identifiants admin incorrects');
   }
 
+  const token = await signTokenAndTouch(user);
+
   res.json({
     success: true,
-    token: generateToken(user._id),
+    token,
     user: {
       _id: user._id,
       firstName: user.firstName,

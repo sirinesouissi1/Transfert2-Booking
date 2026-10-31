@@ -381,9 +381,9 @@ const handleLogout = () => {
             await excursionAPI.delete(id);
           } else if (resource === 'transfer') {
             await bookingAPI.updateStatus(id, { status: 'cancelled' });
-          } else if (resource === 'excursionBooking') {
-            await excursionAPI.updateBookingStatus(id, { status: 'cancelled' });
-          }
+         } else if (resource === 'excursionBooking') {
+  await excursionBookingAPI.updateStatus(id, { status: 'cancelled' });
+}
           toast.success(isBooking ? 'Réservation annulée.' : 'Élément supprimé.');
           fetchData(true);
         } catch (err) {
@@ -405,8 +405,11 @@ const handleLogout = () => {
       } else if (resource === 'transfer') {
         res = await bookingAPI.updateStatus(id, { status: data.status, notifyClient: data.notifyClient });
       } else if (resource === 'excursionBooking') {
-        res = await excursionAPI.updateBookingStatus(id, { status: data.status, notifyClient: data.notifyClient });
-      }
+  res = await excursionBookingAPI.updateStatus(id, {
+    status: data.status,
+    notifyClient: data.notifyClient,
+  });
+}
 
       if (resource === 'transfer' || resource === 'excursionBooking') {
         let suffix = '';
