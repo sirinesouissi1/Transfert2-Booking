@@ -432,32 +432,50 @@ function Hero({ t, language }) {
 
   const [activeField, setActiveField] = useState(null);
   const [filteredLocations, setFilteredLocations] = useState(allLocations);
+  // ✅ FIX : terme de recherche séparé de la valeur sélectionnée
+  const [searchTerm, setSearchTerm] = useState('');
   const dropdownRef = useRef(null);
 
+  // ✅ FIX : quand la langue change, on recalcule les options et on reset la recherche
   useEffect(() => {
     setFilteredLocations(allLocations);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [language]);
 
+  // ✅ FIX : le filtre dépend de searchTerm (et non plus de formData.from/to)
   useEffect(() => {
-    if (activeField) {
-      const searchTerm = formData[activeField].toLowerCase();
-      setFilteredLocations(allLocations.filter(l => l.toLowerCase().includes(searchTerm)));
-    }
-  }, [formData.from, formData.to, activeField, language]);
+    if (!activeField) return;
+    const term = searchTerm.toLowerCase().trim();
+    setFilteredLocations(
+      term === ''
+        ? allLocations
+        : allLocations.filter(l => l.toLowerCase().includes(term))
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTerm, activeField, language]);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setActiveField(null);
+        setSearchTerm('');
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // ✅ FIX : à l'ouverture d'un champ, on vide le searchTerm
+  // pour réafficher TOUTES les options, même si une destination était déjà sélectionnée
+  const handleFocus = (field) => {
+    setActiveField(field);
+    setSearchTerm('');
+  };
+
   const handleSelectLocation = (location) => {
     setFormData(prev => ({ ...prev, [activeField]: location }));
     setActiveField(null);
+    setSearchTerm(''); // ✅ FIX : reset après sélection
   };
 
   const handleSubmit = (e) => {
@@ -532,7 +550,9 @@ function Hero({ t, language }) {
                   label={t.departure} 
                   icon={<MapPin size={16}/>} 
                   value={formData.from} 
-                  onFocus={() => setActiveField('from')} 
+                  onFocus={() => handleFocus('from')}   // ✅ FIX
+                  searchTerm={searchTerm}                // ✅ FIX
+                  onSearchChange={setSearchTerm}         // ✅ FIX
                   suggestions={filteredLocations} 
                   onSelect={handleSelectLocation} 
                   isActive={activeField === 'from'} 
@@ -543,7 +563,9 @@ function Hero({ t, language }) {
                   label={t.destination} 
                   icon={<MapPin size={16} className="text-gold"/>} 
                   value={formData.to} 
-                  onFocus={() => setActiveField('to')} 
+                  onFocus={() => handleFocus('to')}     // ✅ FIX
+                  searchTerm={searchTerm}                // ✅ FIX
+                  onSearchChange={setSearchTerm}         // ✅ FIX
                   suggestions={filteredLocations} 
                   onSelect={handleSelectLocation} 
                   isActive={activeField === 'to'} 
@@ -627,35 +649,45 @@ function Feature({ title, description }) {
   );
 }
 
-function LocationInput({ label, icon, value, onFocus, isActive, suggestions, onSelect, dropdownRef, placeholder }) {
+// ✅ FIX : LocationInput accepte maintenant searchTerm + onSearchChange
+function LocationInput({ 
+  label, icon, value, onFocus, isActive, suggestions, onSelect, 
+  dropdownRef, placeholder, searchTerm, onSearchChange 
+}) {
   return (
     <div className="relative space-y-1">
       <label className="text-[10px] uppercase tracking-widest text-gold/60 ml-1">{label}</label>
       <div className="relative">
         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gold/50">{icon}</span>
         <input 
-          readOnly 
-          value={value} 
-          onFocus={onFocus} 
-          placeholder={placeholder} 
-          className="w-full bg-white/5 border border-white/10 px-10 py-3 text-sm focus:border-gold outline-none cursor-pointer" 
+          // ✅ FIX : quand le champ est actif, on affiche searchTerm (éditable).
+          // Sinon on affiche la valeur sélectionnée.
+          value={isActive ? searchTerm : (value || '')}
+          onFocus={onFocus}
+          onChange={(e) => onSearchChange(e.target.value)}
+          placeholder={placeholder}
+          className="w-full bg-white/5 border border-white/10 px-10 py-3 text-sm focus:border-gold outline-none text-cream" 
         />
       </div>
       {isActive && (
         <div ref={dropdownRef} className="absolute z-[100] left-0 right-0 mt-2 bg-dark-2 border border-white/10 shadow-2xl max-h-48 overflow-y-auto">
-          {suggestions.map((loc) => (
-            <div 
-              key={loc} 
-              onClick={() => onSelect(loc)} 
-              className="px-4 py-3 text-xs text-cream/80 hover:bg-gold hover:text-dark cursor-pointer flex items-center gap-3"
-            >
-              {loc.toLowerCase().includes('airport') || loc.toLowerCase().includes('aéroport') ? 
-                <Plane size={14} className="text-gold"/> : 
-                <MapPin size={14}/>
-              } 
-              {loc}
-            </div>
-          ))}
+          {suggestions.length === 0 ? (
+            <div className="px-4 py-3 text-xs text-cream/40 italic">Aucun résultat</div>
+          ) : (
+            suggestions.map((loc) => (
+              <div 
+                key={loc} 
+                onClick={() => onSelect(loc)} 
+                className="px-4 py-3 text-xs text-cream/80 hover:bg-gold hover:text-dark cursor-pointer flex items-center gap-3"
+              >
+                {loc.toLowerCase().includes('airport') || loc.toLowerCase().includes('aéroport') ? 
+                  <Plane size={14} className="text-gold"/> : 
+                  <MapPin size={14}/>
+                } 
+                {loc}
+              </div>
+            ))
+          )}
         </div>
       )}
     </div>
