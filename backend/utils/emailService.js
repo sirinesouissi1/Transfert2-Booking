@@ -5,19 +5,6 @@ const nodemailer = require('nodemailer');
 // - Si BREVO_API_KEY est défini : API HTTPS Brevo (utile si Render bloque le SMTP)
 // - Sinon : SMTP Gmail (EMAIL_USER / EMAIL_PASS)
 // ========================
-const smtp = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 587,
-  secure: false,
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS, // mot de passe d'application Gmail (16 caractères, sans espaces)
-  },
-  connectionTimeout: 10000,
-  greetingTimeout: 10000,
-  socketTimeout: 15000,
-});
-
 const SENDER_NAME = 'GoTaxi';
 const getSenderEmail = () => process.env.EMAIL_FROM || process.env.EMAIL_USER;
 const getAdminEmail = () => process.env.ADMIN_EMAIL || process.env.EMAIL_USER;
@@ -25,6 +12,7 @@ const getAdminEmail = () => process.env.ADMIN_EMAIL || process.env.EMAIL_USER;
 const sendMail = async ({ to, subject, html }) => {
   if (!to) throw new Error('Destinataire manquant');
 
+  // --- Option 1 : Brevo (API) ---
   if (process.env.BREVO_API_KEY) {
     const res = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
@@ -44,9 +32,24 @@ const sendMail = async ({ to, subject, html }) => {
     return;
   }
 
+  // --- Option 2 : SMTP Gmail ---
   if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-    throw new Error('EMAIL_USER / EMAIL_PASS non définis');
+    throw new Error('EMAIL_USER / EMAIL_PASS non définis dans le .env');
   }
+
+  // Création du transporteur AU MOMENT de l'envoi (pas au chargement du fichier)
+  const smtp = nodemailer.createTransport({
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false,
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS, // mot de passe d'application (16 caractères, sans espaces)
+    },
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000,
+  });
 
   await smtp.sendMail({
     from: `"${SENDER_NAME}" <${getSenderEmail()}>`,
@@ -60,24 +63,20 @@ const sendMail = async ({ to, subject, html }) => {
 // Fonctions utilitaires
 // ========================
 
-// Formate une date en français (avec l'heure)
 const formatDate = (dateString) => {
   const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
   return new Date(dateString).toLocaleDateString('fr-FR', options);
 };
 
-// Formate une date en français (sans l'heure)
 const formatDateOnly = (dateString) =>
   new Date(dateString).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' });
 
-// Affiche le prix, ou "Prix sur demande" s'il n'est pas défini
 const CURRENCY = '€';
 const PRICE_ON_REQUEST = 'Prix sur demande';
 
 const formatPrice = (price, priceOnRequest = false) => {
   if (priceOnRequest) return PRICE_ON_REQUEST;
   if (price === null || price === undefined || price === '') return PRICE_ON_REQUEST;
-
   if (typeof price === 'string' && isNaN(Number(price))) return price;
 
   const value = Number(price);
@@ -89,7 +88,6 @@ const formatPrice = (price, priceOnRequest = false) => {
 const isPriceOnRequest = (price, priceOnRequest = false) =>
   formatPrice(price, priceOnRequest) === PRICE_ON_REQUEST;
 
-// Protège les emails contre l'injection HTML (les champs viennent des clients)
 const escapeHtml = (value) => {
   if (value === null || value === undefined) return '';
   return String(value)
@@ -101,7 +99,7 @@ const escapeHtml = (value) => {
 };
 
 // ========================
-// Styles communs – design épuré et moderne
+// Styles communs
 // ========================
 const baseStyles = {
   container: 'font-family: \'Helvetica Neue\', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 0; background-color: #f9f9f9; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);',
@@ -121,15 +119,12 @@ const baseStyles = {
   button: 'display: inline-block; background-color: #C9A84C; color: #1a1a1a; text-decoration: none; padding: 12px 25px; border-radius: 40px; font-weight: bold; margin: 15px 0;',
 };
 
-// Une ligne de tableau (label / valeur)
-// Si html = true, la valeur est insérée telle quelle (déjà sécurisée par l'appelant)
 const row = (label, value, html = false) => `
   <tr style="${baseStyles.tableRow}">
     <td style="${baseStyles.tableLabel}">${label}</td>
     <td style="${baseStyles.tableValue}">${html ? value : escapeHtml(value)}</td>
   </tr>`;
 
-// Template de base
 const getBaseTemplate = (content, title = '') => `
   <div style="${baseStyles.container}">
     <div style="${baseStyles.header}">
@@ -147,14 +142,13 @@ const getBaseTemplate = (content, title = '') => `
   </div>
 `;
 
-// Message affiché au client quand le prix est sur demande
 const priceOnRequestNotice = (booking) =>
   isPriceOnRequest(booking.totalPrice, booking.priceOnRequest)
     ? '<p style="color:#777; font-size: 14px;">Le tarif exact vous sera communiqué par notre équipe lors de la confirmation.</p>'
     : '';
 
 // ========================
-// Emails de réservation de transfert
+// Emails transfert
 // ========================
 
 const sendBookingConfirmation = async (booking) => {
@@ -235,7 +229,7 @@ const sendAdminNotification = async (booking) => {
 };
 
 // ========================
-// Emails de réservation d'excursion
+// Emails excursion
 // ========================
 
 const sendExcursionBookingConfirmation = async (booking) => {
