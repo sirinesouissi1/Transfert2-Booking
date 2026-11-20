@@ -3,18 +3,28 @@ const router = express.Router();
 const {
   getPrices,
   getPriceForTrip,
+  resolvePrice,
   createPrice,
   updatePrice,
-  deletePrice
+  deletePrice,
 } = require('../controllers/priceController');
 
-// Routes publiques : obtenir les prix pour un trajet donné
-router.get('/trip', getPriceForTrip); // /api/prices/trip?from=X&to=Y
+// ============================================================
+// ROUTES PUBLIQUES
+// ============================================================
 
-// Routes protégées (admin)
+// Prix pour un trajet (tous les véhicules)
+router.get('/trip', getPriceForTrip);
+
+// ✅ NOUVEAU : prix pour UN véhicule + fallback sur vehicle.price
+router.get('/resolve', resolvePrice);
+
+// ============================================================
+// ROUTES PROTÉGÉES (admin)
+// ============================================================
 router.route('/')
-  .get(getPrices)       // tous les prix (admin)
-  .post(createPrice);   // créer un prix
+  .get(getPrices)
+  .post(createPrice);
 
 router.route('/:id')
   .put(updatePrice)

@@ -6,7 +6,14 @@ import {
 import { getImageUrl } from '../utils/imageUrl';
 import BookingCalendar from '../pages/BookingCalendar';
 import { Link, useNavigate } from 'react-router-dom';
-import { bookingAPI, vehicleAPI, excursionAPI, excursionBookingAPI, contactAPI } from '../services/api';
+import {
+  bookingAPI,
+  vehicleAPI,
+  excursionAPI,
+  excursionBookingAPI,
+  contactAPI,
+  priceAPI,
+} from '../services/api';
 import useAuthStore from '../context/authStore';
 import { ToastContext, ToastContainer, useToast, useToasts } from '../components/dashboard/Toast';
 import { useTableFilters, TableToolbar, Pagination, NoResults } from '../components/dashboard/TableTools';
@@ -54,7 +61,7 @@ import {
   FiImage,
 } from 'react-icons/fi';
 import { ALL_LOCATIONS } from '../constants/locations';
-// URL de l'API (backend Render). Sans cette base, les fetch('/api/...') partent vers le domaine du frontend.
+
 const API_URL = (import.meta.env.VITE_API_URL || 'https://go-taxi-api.onrender.com/api').replace(/\/$/, '');
 
 const STATUS_STYLES = {
@@ -80,7 +87,6 @@ const STATUS_COLORS = {
   cancelled: '#E74C3C',
 };
 
-// Helper d'affichage du prix (null / undefined / 0 = "sur demande")
 const formatPrice = (value) => {
   if (value === null || value === undefined || Number(value) === 0) {
     return <span className="italic text-muted text-sm">Prix sur demande</span>;
@@ -106,7 +112,6 @@ function DashboardInner({ toast }) {
   const prevUnreadRef = useRef(null);
   const fetchingRef = useRef(false);
 
-  // ---- États principaux ----
   const [excursionBookings, setExcursionBookings] = useState([]);
   const [excursionBookingsAll, setExcursionBookingsAll] = useState([]);
   const [currentView, setCurrentView] = useState('dashboard');
@@ -118,11 +123,9 @@ function DashboardInner({ toast }) {
   const [error, setError] = useState(null);
   const [bookingsOpen, setBookingsOpen] = useState(false);
 
-  // ---- Contacts (déplacés ici : doivent être déclarés avant fetchData) ----
   const [contacts, setContacts] = useState([]);
   const [unreadContacts, setUnreadContacts] = useState(0);
 
-  // ---- Modals vue / édition ----
   const [modalOpen, setModalOpen] = useState(false);
   const [modalType, setModalType] = useState(null);
   const [selectedItem, setSelectedItem] = useState(null);
@@ -130,14 +133,11 @@ function DashboardInner({ toast }) {
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // ---- Modal de création (véhicule / excursion) ----
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createResource, setCreateResource] = useState(null);
 
-  // ---- Prix Véhicule par Destination ----
   const [selectedVehicleForPricing, setSelectedVehicleForPricing] = useState(null);
 
-  // ---- Modal de confirmation ----
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false,
     title: '',
@@ -153,7 +153,6 @@ function DashboardInner({ toast }) {
     setConfirmModal({ isOpen: false, title: '', message: '', onConfirm: null });
   };
 
-  // ---- Données pour les graphiques ----
   const bookingsByMonth = useMemo(() => {
     const months = {};
     bookings.forEach((b) => {
@@ -162,13 +161,12 @@ function DashboardInner({ toast }) {
       const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       months[key] = (months[key] || 0) + 1;
     });
-    // Tri chronologique (l'ordre d'insertion ne l'était pas)
     return Object.entries(months)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([key, value]) => ({ name: `${key.slice(5)}/${key.slice(0, 4)}`, value }));
   }, [bookings]);
 
-const bookingsByStatus = useMemo(() => {
+  const bookingsByStatus = useMemo(() => {
     const statusCount = { pending: 0, confirmed: 0, completed: 0, cancelled: 0 };
     bookings.forEach((b) => {
       if (statusCount[b.status] !== undefined) statusCount[b.status]++;
@@ -205,7 +203,6 @@ const bookingsByStatus = useMemo(() => {
         setBookings(bookingsData);
 
         if (isAdmin) {
-          // Clients uniques
           const clientsMap = new Map();
           bookingsData.forEach((b) => {
             const key = b.email;
@@ -239,7 +236,6 @@ const bookingsByStatus = useMemo(() => {
           setExcursionBookingsAll(excBookingsData);
           setExcursionBookings(excBookingsData);
 
-          // Nouvelles réservations en attente depuis le dernier rafraîchissement
           const pendingNow =
             bookingsData.filter((b) => b.bookingType === 'transfer' && b.status === 'pending').length +
             excBookingsData.filter((b) => b.status === 'pending').length;
@@ -249,7 +245,6 @@ const bookingsByStatus = useMemo(() => {
           }
           prevPendingRef.current = pendingNow;
 
-          // Contacts
           const contactsRes = await contactAPI.getAll();
           const contactsData = contactsRes.data.messages || [];
           const unreadNow = contactsData.filter((c) => !c.isRead).length;
@@ -263,7 +258,6 @@ const bookingsByStatus = useMemo(() => {
         if (silent) setError(null);
       } catch (err) {
         console.error('Erreur chargement données:', err);
-        // Un rafraîchissement automatique raté ne doit pas afficher d'erreur intrusive
         if (!silent) setError('Impossible de charger les données. Veuillez réessayer.');
       } finally {
         fetchingRef.current = false;
@@ -273,12 +267,10 @@ const bookingsByStatus = useMemo(() => {
     [isAdmin, toast]
   );
 
-  // Chargement initial
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  // Rafraîchissement automatique toutes les 60 s (onglet visible) + au retour sur l'onglet
   useEffect(() => {
     if (!isAdmin) return undefined;
     const tick = () => {
@@ -292,7 +284,6 @@ const bookingsByStatus = useMemo(() => {
     };
   }, [isAdmin, fetchData]);
 
-  // ---- Dérivés : réservations en attente, fusion transferts + excursions, conflits ----
   const transferBookings = useMemo(
     () => bookings.filter((b) => b.bookingType === 'transfer'),
     [bookings]
@@ -307,14 +298,12 @@ const bookingsByStatus = useMemo(() => {
   );
   const pendingTotal = pendingTransfers + pendingExcursions;
 
-  // Les réservations d'excursion du endpoint dédié sont prioritaires (pas de doublon par code)
   const allBookings = useMemo(
     () => mergeAllBookings(excursionBookingsAll, bookings),
     [excursionBookingsAll, bookings]
   );
   const conflictMap = useMemo(() => buildConflictMap(allBookings), [allBookings]);
 
-  // Compteur dans le titre de l'onglet : "(3) GO TAXI…"
   useEffect(() => {
     if (!isAdmin) return undefined;
     const original = document.title.replace(/^\(\d+\)\s/, '');
@@ -324,7 +313,7 @@ const bookingsByStatus = useMemo(() => {
     };
   }, [isAdmin, pendingTotal]);
 
-const handleLogout = () => {
+  const handleLogout = () => {
     logout();
     navigate('/admin/login');
   };
@@ -365,7 +354,6 @@ const handleLogout = () => {
     setModalType(null);
   };
 
-  // Suppression avec modal de confirmation personnalisé
   const handleDelete = (resource, id) => {
     const isBooking = resource === 'transfer' || resource === 'excursionBooking';
     askConfirmation(
@@ -381,9 +369,9 @@ const handleLogout = () => {
             await excursionAPI.delete(id);
           } else if (resource === 'transfer') {
             await bookingAPI.updateStatus(id, { status: 'cancelled' });
-         } else if (resource === 'excursionBooking') {
-  await excursionBookingAPI.updateStatus(id, { status: 'cancelled' });
-}
+          } else if (resource === 'excursionBooking') {
+            await excursionBookingAPI.updateStatus(id, { status: 'cancelled' });
+          }
           toast.success(isBooking ? 'Réservation annulée.' : 'Élément supprimé.');
           fetchData(true);
         } catch (err) {
@@ -405,11 +393,11 @@ const handleLogout = () => {
       } else if (resource === 'transfer') {
         res = await bookingAPI.updateStatus(id, { status: data.status, notifyClient: data.notifyClient });
       } else if (resource === 'excursionBooking') {
-  res = await excursionBookingAPI.updateStatus(id, {
-    status: data.status,
-    notifyClient: data.notifyClient,
-  });
-}
+        res = await excursionBookingAPI.updateStatus(id, {
+          status: data.status,
+          notifyClient: data.notifyClient,
+        });
+      }
 
       if (resource === 'transfer' || resource === 'excursionBooking') {
         let suffix = '';
@@ -428,7 +416,6 @@ const handleLogout = () => {
     }
   };
 
-  // Affectation chauffeur + véhicule (voir BACKEND_NOTES.md pour les routes à ajouter)
   const handleAssign = async (resource, id, data) => {
     try {
       const fn = resource === 'transfer' ? bookingAPI.assign : excursionAPI.assignBooking;
@@ -445,7 +432,7 @@ const handleLogout = () => {
     }
   };
 
-const totalBookings = bookings.length;
+  const totalBookings = bookings.length;
   const totalSpent = bookings.reduce((acc, b) => acc + (b.total ?? b.totalPrice ?? 0), 0);
   const pendingBookings = bookings.filter((b) => b.status === 'pending').length;
   const completedBookings = bookings.filter((b) => b.status === 'completed').length;
@@ -454,7 +441,6 @@ const totalBookings = bookings.length;
 
   return (
     <div className="flex h-screen bg-[#1F1F2E] text-cream">
-      {/* Sidebar - cachée sur mobile, visible sur desktop (md:static) */}
       <aside
         className={`
         fixed md:static inset-y-0 left-0 z-50 w-64 bg-[#2A2A3C] border-r border-white/10 flex flex-col
@@ -466,37 +452,16 @@ const totalBookings = bookings.length;
           <Link to="/" className="font-serif text-2xl tracking-[4px] text-cream">
             GO<span className="text-gold">TAXI</span>
           </Link>
-          {/* Bouton fermer (mobile uniquement) */}
           <button className="md:hidden text-muted hover:text-cream" onClick={() => setMobileMenuOpen(false)}>
             <FiX size={24} />
           </button>
         </div>
 
         <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
-          <NavLink
-            onClick={() => goTo('dashboard')}
-            icon={<FiHome />}
-            label="Dashboard"
-            active={isActive('dashboard')}
-          />
-          <NavLink
-            onClick={() => goTo('clients')}
-            icon={<FiUsers />}
-            label="Clients"
-            active={isActive('clients')}
-          />
-          <NavLink
-            onClick={() => goTo('vehicules')}
-            icon={<FiTruck />}
-            label="Véhicules"
-            active={isActive('vehicules')}
-          />
-          <NavLink
-            onClick={() => goTo('excursions')}
-            icon={<FiMap />}
-            label="Excursions"
-            active={isActive('excursions')}
-          />
+          <NavLink onClick={() => goTo('dashboard')} icon={<FiHome />} label="Dashboard" active={isActive('dashboard')} />
+          <NavLink onClick={() => goTo('clients')} icon={<FiUsers />} label="Clients" active={isActive('clients')} />
+          <NavLink onClick={() => goTo('vehicules')} icon={<FiTruck />} label="Véhicules" active={isActive('vehicules')} />
+          <NavLink onClick={() => goTo('excursions')} icon={<FiMap />} label="Excursions" active={isActive('excursions')} />
           <NavLink
             onClick={() => {
               goTo('vehiculePricing');
@@ -542,14 +507,8 @@ const totalBookings = bookings.length;
             )}
           </div>
 
-          <NavLink
-            onClick={() => goTo('calendar')}
-            icon={<FiCalendar />}
-            label="Calendrier"
-            active={isActive('calendar')}
-          />
+          <NavLink onClick={() => goTo('calendar')} icon={<FiCalendar />} label="Calendrier" active={isActive('calendar')} />
 
-          {/* Messages : maintenant DANS le <nav> */}
           <NavLink
             onClick={() => goTo('messages')}
             icon={<FiMail />}
@@ -578,7 +537,6 @@ const totalBookings = bookings.length;
         </div>
       </aside>
 
-      {/* Overlay sombre quand le menu mobile est ouvert */}
       {mobileMenuOpen && (
         <div
           className="fixed inset-0 bg-black/50 z-40 md:hidden"
@@ -586,11 +544,8 @@ const totalBookings = bookings.length;
         />
       )}
 
-      {/* Main content */}
       <main className="flex-1 flex flex-col h-full overflow-hidden">
-        {/* Header du Dashboard */}
         <div className="sticky top-0 z-30 bg-[#2A2A3C] border-b border-white/10 px-4 md:px-8 py-4 flex justify-between items-center">
-          {/* Bouton menu (visible uniquement sur mobile) */}
           <button
             className="md:hidden p-2 text-cream hover:text-gold"
             onClick={() => setMobileMenuOpen(true)}
@@ -614,7 +569,6 @@ const totalBookings = bookings.length;
           </div>
         </div>
 
-        {/* Contenu défilable */}
         <div className="p-4 md:p-8 overflow-y-auto flex-1">
           {error && (
             <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 text-red-400 rounded">
@@ -622,7 +576,6 @@ const totalBookings = bookings.length;
             </div>
           )}
 
-          {/* Alerte notification messages */}
           {unreadContacts > 0 && currentView === 'dashboard' && (
             <div className="mb-6 p-4 bg-gold/10 border border-gold/30 text-gold rounded flex items-center justify-between animate-fade-in">
               <div className="flex items-center gap-3">
@@ -862,6 +815,8 @@ const totalBookings = bookings.length;
               isAdmin={isAdmin}
               selectedVehicle={selectedVehicleForPricing}
               onSelectVehicle={setSelectedVehicleForPricing}
+              askConfirmation={askConfirmation}
+              closeConfirmModal={closeConfirmModal}
             />
           )}
 
@@ -901,7 +856,6 @@ const totalBookings = bookings.length;
             />
           )}
 
-          {/* Vue Messages */}
           {currentView === 'messages' && (
             <div className="bg-[#2A2A3C] border border-white/10 rounded-lg p-6">
               <h1 className="text-2xl font-serif mb-6 flex items-center gap-3">
@@ -1010,7 +964,6 @@ const totalBookings = bookings.length;
         />
       )}
 
-      {/* Modal de confirmation (suppressions) */}
       <ConfirmModal
         isOpen={confirmModal.isOpen}
         title={confirmModal.title}
@@ -1026,7 +979,15 @@ const totalBookings = bookings.length;
 // Composants
 // ------------------------------------------------------------------
 
-function VehiclePricingView({ vehicles, loading, isAdmin, selectedVehicle, onSelectVehicle }) {
+function VehiclePricingView({
+  vehicles,
+  loading,
+  isAdmin,
+  selectedVehicle,
+  onSelectVehicle,
+  askConfirmation,
+  closeConfirmModal,
+}) {
   if (loading) return <div className="text-center py-12 text-muted">Chargement des véhicules...</div>;
 
   if (!selectedVehicle) {
@@ -1057,6 +1018,8 @@ function VehiclePricingView({ vehicles, loading, isAdmin, selectedVehicle, onSel
       vehicle={selectedVehicle}
       isAdmin={isAdmin}
       onBack={() => onSelectVehicle(null)}
+      askConfirmation={askConfirmation}
+      closeConfirmModal={closeConfirmModal}
     />
   );
 }
@@ -1098,26 +1061,26 @@ function VehicleCard({ vehicle, onClick }) {
   );
 }
 
-function VehicleDestinationPricing({ vehicle, isAdmin, onBack }) {
+function VehicleDestinationPricing({ vehicle, isAdmin, onBack, askConfirmation, closeConfirmModal }) {
   const [prices, setPrices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [addForm, setAddForm] = useState({ from: '', to: '', tripType: 'one_way', price: '' });
   const [addError, setAddError] = useState('');
-  const [successMsg, setSuccessMsg] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const toast = useToast();
+  const showSuccess = (msg) => toast.success(msg);
 
   const fetchPrices = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/prices?vehicleId=${vehicle._id}`);
-      const data = await res.json();
-      const vehiclePrices = (data.prices || []).filter(
-        (p) => (p.vehicle?._id || p.vehicle) === vehicle._id
-      );
-      setPrices(vehiclePrices);
+      const res = await priceAPI.getAll(vehicle._id);
+      setPrices(res.data.prices || []);
     } catch (err) {
       console.error('Erreur chargement prix:', err);
+      toast.error('Impossible de charger les tarifs.');
     } finally {
       setLoading(false);
     }
@@ -1128,29 +1091,19 @@ function VehicleDestinationPricing({ vehicle, isAdmin, onBack }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vehicle._id]);
 
-  const toast = useToast();
-  const showSuccess = (msg) => toast.success(msg);
-
   const handleAdd = async () => {
-    // 1. Champs obligatoires
     if (!addForm.from || !addForm.to || !addForm.price) {
       setAddError('Veuillez sélectionner un départ, une destination et saisir un prix.');
       return;
     }
-
-    // 2. Départ ≠ Destination
     if (addForm.from === addForm.to) {
       setAddError('Le départ et la destination doivent être différents.');
       return;
     }
-
-    // 3. Prix numérique > 0
     if (isNaN(Number(addForm.price)) || Number(addForm.price) <= 0) {
       setAddError('Le prix doit être un nombre positif.');
       return;
     }
-
-    // 4. Anti-doublon (front)
     const duplicate = prices.some(
       (p) =>
         (p.from || '').toLowerCase() === addForm.from.toLowerCase() &&
@@ -1163,28 +1116,22 @@ function VehicleDestinationPricing({ vehicle, isAdmin, onBack }) {
     }
 
     setAddError('');
+    setSubmitting(true);
     try {
-      const res = await fetch(`${API_URL}/prices`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          vehicle: vehicle._id,
-          from: addForm.from.trim(),
-          to: addForm.to.trim(),
-          tripType: addForm.tripType,
-          price: Number(addForm.price),
-        }),
+      await priceAPI.create({
+        vehicle: vehicle._id,
+        from: addForm.from.trim(),
+        to: addForm.to.trim(),
+        tripType: addForm.tripType,
+        price: Number(addForm.price),
       });
-      if (!res.ok) {
-        const err = await res.json();
-        setAddError(err.message || "Erreur lors de l'ajout");
-        return;
-      }
       setAddForm({ from: '', to: '', tripType: 'one_way', price: '' });
       await fetchPrices();
       showSuccess('Tarif ajouté avec succès.');
     } catch (err) {
-      setAddError('Erreur réseau.');
+      setAddError(err.response?.data?.message || "Erreur lors de l'ajout");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -1210,35 +1157,37 @@ function VehicleDestinationPricing({ vehicle, isAdmin, onBack }) {
     }
 
     try {
-      await fetch(`${API_URL}/prices/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          from: editForm.from.trim(),
-          to: editForm.to.trim(),
-          tripType: editForm.tripType,
-          price: Number(editForm.price),
-        }),
+      await priceAPI.update(id, {
+        from: editForm.from.trim(),
+        to: editForm.to.trim(),
+        tripType: editForm.tripType,
+        price: Number(editForm.price),
       });
       setEditingId(null);
       await fetchPrices();
       showSuccess('Tarif mis à jour.');
     } catch (err) {
       console.error(err);
-      toast.error('Erreur lors de la mise à jour du tarif.');
+      toast.error(err.response?.data?.message || 'Erreur lors de la mise à jour du tarif.');
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Voulez-vous vraiment supprimer ce tarif ?')) return;
-    try {
-      const res = await fetch(`${API_URL}/prices/${id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Suppression refusée');
-      await fetchPrices();
-      showSuccess('Tarif supprimé.');
-    } catch (err) {
-      toast.error('Erreur lors de la suppression du tarif.');
-    }
+  const handleDelete = (id) => {
+    askConfirmation(
+      'Supprimer le tarif',
+      'Voulez-vous vraiment supprimer ce tarif ? Cette action est irréversible.',
+      async () => {
+        try {
+          await priceAPI.delete(id);
+          await fetchPrices();
+          showSuccess('Tarif supprimé.');
+        } catch (err) {
+          toast.error(err.response?.data?.message || 'Erreur lors de la suppression du tarif.');
+        } finally {
+          closeConfirmModal();
+        }
+      }
+    );
   };
 
   const TRIP_LABELS = { one_way: 'Aller simple', round_trip: 'Aller-retour' };
@@ -1270,12 +1219,6 @@ function VehicleDestinationPricing({ vehicle, isAdmin, onBack }) {
         </div>
       </div>
 
-      {successMsg && (
-        <div className="mb-4 flex items-center gap-2 px-4 py-3 bg-green-500/10 border border-green-500/20 text-green-400 rounded text-sm">
-          <FiCheck size={15} /> {successMsg}
-        </div>
-      )}
-
       {isAdmin && (
         <div className="bg-[#2A2A3C] border border-white/10 rounded-lg p-6 mb-6">
           <h2 className="text-base font-serif text-cream mb-4 flex items-center gap-2">
@@ -1305,7 +1248,7 @@ function VehicleDestinationPricing({ vehicle, isAdmin, onBack }) {
                 className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40"
               >
                 <option value="">— Choisir —</option>
-                {ALL_LOCATIONS.map((loc) => (
+                {ALL_LOCATIONS.filter((loc) => loc !== addForm.from).map((loc) => (
                   <option key={loc} value={loc}>{loc}</option>
                 ))}
               </select>
@@ -1332,9 +1275,10 @@ function VehicleDestinationPricing({ vehicle, isAdmin, onBack }) {
             </div>
             <button
               onClick={handleAdd}
-              className="flex items-center justify-center gap-2 bg-gold text-dark-2 px-4 py-2 rounded text-sm font-medium hover:bg-gold/90 transition-colors"
+              disabled={submitting}
+              className="flex items-center justify-center gap-2 bg-gold text-dark-2 px-4 py-2 rounded text-sm font-medium hover:bg-gold/90 transition-colors disabled:opacity-50"
             >
-              <FiPlus size={15} /> Ajouter
+              <FiPlus size={15} /> {submitting ? 'Ajout…' : 'Ajouter'}
             </button>
           </div>
         </div>
@@ -1394,7 +1338,7 @@ function VehicleDestinationPricing({ vehicle, isAdmin, onBack }) {
                             className="bg-[#35354A] border border-gold/30 rounded px-2 py-1 text-cream text-sm w-full focus:outline-none"
                           >
                             <option value="">— Choisir —</option>
-                            {ALL_LOCATIONS.map((loc) => (
+                            {ALL_LOCATIONS.filter((loc) => loc !== editForm.from).map((loc) => (
                               <option key={loc} value={loc}>{loc}</option>
                             ))}
                           </select>
@@ -1427,8 +1371,8 @@ function VehicleDestinationPricing({ vehicle, isAdmin, onBack }) {
                           </div>
                         </td>
                         <td className="px-6 py-3">
-                          <span className={`text-xs border px-2 py-0.5 rounded ${TRIP_STYLES[p.tripType]}`}>
-                            {TRIP_LABELS[p.tripType]}
+                          <span className={`text-xs border px-2 py-0.5 rounded ${TRIP_STYLES[p.tripType] || ''}`}>
+                            {TRIP_LABELS[p.tripType] || p.tripType}
                           </span>
                         </td>
                         <td className="px-6 py-3">
@@ -1438,8 +1382,8 @@ function VehicleDestinationPricing({ vehicle, isAdmin, onBack }) {
                         {isAdmin && (
                           <td className="px-6 py-3">
                             <div className="flex items-center gap-2">
-                              <button onClick={() => startEdit(p)} className="p-1 text-muted hover:text-gold"><FiEdit2 size={16} /></button>
-                              <button onClick={() => handleDelete(p._id)} className="p-1 text-muted hover:text-red-400"><FiTrash2 size={16} /></button>
+                              <button onClick={() => startEdit(p)} className="p-1 text-muted hover:text-gold" title="Modifier"><FiEdit2 size={16} /></button>
+                              <button onClick={() => handleDelete(p._id)} className="p-1 text-muted hover:text-red-400" title="Supprimer"><FiTrash2 size={16} /></button>
                             </div>
                           </td>
                         )}
@@ -1477,7 +1421,6 @@ function ActionButtons({ onView, onEdit, onDelete, isAdmin, extra }) {
   );
 }
 
-// Fonctions de recherche / filtre (stables, définies hors composants)
 const clientSearch = (c) => `${c.firstName || ''} ${c.lastName || ''} ${c.email || ''} ${c.phone || ''}`;
 const clientDate = (c) => c.lastBooking;
 const vehicleSearch = (v) => `${v.name || ''} ${v.description || ''}`;
@@ -1511,7 +1454,6 @@ function TableCard({ f, children }) {
   );
 }
 
-// Véhicule demandé par le client + affectation interne (chauffeur / véhicule)
 function AssignmentCell({ b, vehicles }) {
   const assignedName = b.assignedVehicle ? resolveVehicleName({ assignedVehicle: b.assignedVehicle }, vehicles) : '';
   return (
@@ -1923,7 +1865,7 @@ function DetailHero({ src, alt, fallback }) {
 }
 
 // ------------------------------------------------------------------
-// Modal VUE / ÉDITION (avec upload image pour véhicule & excursion)
+// Modal VUE / ÉDITION
 // ------------------------------------------------------------------
 function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin, vehicles = [], allBookings = [], onAssign }) {
   const [formData, setFormData] = useState(item || {});
@@ -1932,7 +1874,6 @@ function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin, vehic
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
 
-  // État local pour l'édition des listes inclus/exclus et itinéraire
   const [includesStr, setIncludesStr] = useState((item?.includes || []).join('\n'));
   const [excludesStr, setExcludesStr] = useState((item?.excludes || []).join('\n'));
   const [itineraryArr, setItineraryArr] = useState(item?.itinerary || [{ time: '', title: '', description: '' }]);
@@ -1962,7 +1903,6 @@ function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin, vehic
       return;
     }
 
-    // Préparation des données pour véhicule ou excursion
     const payload = { ...formData };
 
     if (resource === 'excursion') {
@@ -1978,18 +1918,15 @@ function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin, vehic
         if (k === 'createdAt' || k === 'updatedAt') return;
         if (v === undefined || v === null) return;
 
-        // Si c'est un tableau ou un objet, on le stringifie (pour multer)
         if (typeof v === 'object') {
           fd.append(k, JSON.stringify(v));
         } else {
           fd.append(k, String(v));
         }
       });
-      // Un seul envoi de l'image
       fd.append(resource === 'vehicle' ? 'image' : 'coverImage', imageFile);
       onUpdate(resource, item._id, fd);
     } else {
-      // Pas de nouvelle image : envoyer le json
       delete payload.image;
       delete payload.coverImage;
       delete payload.createdAt;
@@ -2252,7 +2189,6 @@ function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin, vehic
             </div>
           </div>
 
-          {/* Image */}
           <div>
             <label className="block text-sm text-muted mb-1">Image</label>
             <div className="flex items-center gap-4">
@@ -2322,7 +2258,6 @@ function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin, vehic
               className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-cream" />
           </div>
 
-          {/* Programme */}
           <div className="mt-4">
             <label className="block text-sm text-muted mb-1">Programme de la journée</label>
             {itineraryArr.map((step, index) => (
@@ -2361,7 +2296,6 @@ function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin, vehic
             </div>
           </div>
 
-          {/* Image */}
           <div className="mt-4">
             <label className="block text-sm text-muted mb-1">Image de couverture</label>
             <div className="flex items-center gap-4">
@@ -2451,19 +2385,14 @@ function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin, vehic
 }
 
 // ------------------------------------------------------------------
-// Modal de CRÉATION (Véhicule / Excursion) — Upload depuis l'appareil
+// Modal de CRÉATION
 // ------------------------------------------------------------------
 function CreateResourceModal({ resource, onClose, onCreated }) {
   const isVehicle = resource === 'vehicle';
 
   const [form, setForm] = useState(
     isVehicle
-      ? {
-          name: '',
-          description: '',
-          price: '',
-          capacity: '',
-        }
+      ? { name: '', description: '', price: '', capacity: '' }
       : {
           name: '',
           shortDesc: '',
@@ -2479,7 +2408,6 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
           includes: '',
           excludes: '',
           itinerary: [{ time: '', title: '', description: '' }],
-          // Prix par point de départ et taille de groupe
           departurePrices: {
             Hammamet: { '4': '', '6': '', '8': '' },
             Sousse: { '4': '', '6': '', '8': '' },
@@ -2547,18 +2475,14 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
         fd.append('description', form.description.trim());
         fd.append('capacity', String(Number(form.capacity)));
 
-        // Prix optionnel : si vide → pas envoyé (backend met null)
         if (form.price !== '' && Number(form.price) > 0) {
           fd.append('price', String(Number(form.price)));
         }
-
         if (imageFile) {
           fd.append('image', imageFile);
         }
-
         res = await vehicleAPI.create(fd);
       } else {
-        // Excursion : FormData aussi (pour envoyer l'image)
         const fd = new FormData();
         fd.append('name', form.name.trim());
         if (form.shortDesc.trim()) fd.append('shortDesc', form.shortDesc.trim());
@@ -2573,7 +2497,6 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
         fd.append('isFeatured', String(form.isFeatured));
         fd.append('isActive', 'true');
 
-        // Préparation des listes et de l'itinéraire
         const includesArray = form.includes.split('\n').map((s) => s.trim()).filter(Boolean);
         const excludesArray = form.excludes.split('\n').map((s) => s.trim()).filter(Boolean);
         const itineraryArray = form.itinerary.filter((item) => item.time || item.title || item.description);
@@ -2582,9 +2505,6 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
         fd.append('excludes', JSON.stringify(excludesArray));
         fd.append('itinerary', JSON.stringify(itineraryArray));
 
-        // ❌ SUPPRIMÉ : le 1er fd.append('coverImage', imageFile) qui causait "Unexpected field"
-
-        // Nettoyer et envoyer les prix par point de départ
         const cleanedDeparturePrices = {};
         Object.entries(form.departurePrices || {}).forEach(([city, prices]) => {
           const cleaned = {};
@@ -2595,7 +2515,6 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
         });
         fd.append('departurePrices', JSON.stringify(cleanedDeparturePrices));
 
-        // ✅ UN SEUL envoi de l'image
         if (imageFile) {
           fd.append('coverImage', imageFile);
         }
@@ -2681,8 +2600,6 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
                     className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40"
                   />
                 </div>
-
-                {/* Upload image depuis l'appareil */}
                 <div className="md:col-span-2">
                   <label className="block text-[10px] uppercase tracking-wider text-muted mb-1">Image</label>
                   <div className="flex items-center gap-4">
@@ -2690,7 +2607,7 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
                       <div className="w-full bg-[#35354A] border border-dashed border-white/20 hover:border-gold/40 rounded px-3 py-3 text-sm text-muted flex items-center gap-2 transition-colors">
                         <FiImage size={16} className="text-gold" />
                         <span className="truncate">
-                          {imageFile ? imageFile.name : 'Choisir une image depuis l’appareil…'}
+                          {imageFile ? imageFile.name : 'Choisir une image…'}
                         </span>
                       </div>
                       <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
@@ -2713,7 +2630,6 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
                       </div>
                     )}
                   </div>
-                  <p className="text-muted text-[10px] mt-1">JPG, PNG, WEBP — max 5 Mo</p>
                 </div>
               </div>
             </>
@@ -2735,9 +2651,9 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-[10px] uppercase tracking-wider text-muted mb-1">Description complète *</label>
+                  <label className="block text-[10px] uppercase tracking-wider text-muted mb-1">Description *</label>
                   <textarea
-                    name="description" value={form.description} onChange={handleChange} rows="4"
+                    name="description" value={form.description} onChange={handleChange} rows="3"
                     className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40 resize-none"
                   />
                 </div>
@@ -2752,7 +2668,14 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
                   <label className="block text-[10px] uppercase tracking-wider text-muted mb-1">Durée *</label>
                   <input
                     type="text" name="duration" value={form.duration} onChange={handleChange}
-                    placeholder="Ex: 1 jour, 8h..."
+                    placeholder="Ex: 1 jour"
+                    className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] uppercase tracking-wider text-muted mb-1">Prix / personne (€) *</label>
+                  <input
+                    type="number" min="0" name="pricePerPerson" value={form.pricePerPerson} onChange={handleChange}
                     className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40"
                   />
                 </div>
@@ -2764,157 +2687,40 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
                   >
                     <option value="culture">Culture</option>
                     <option value="nature">Nature</option>
-                    <option value="desert">Désert</option>
-                    <option value="beach">Plage</option>
-                    <option value="city">Ville</option>
-                    <option value="roman">Romain</option>
+                    <option value="aventure">Aventure</option>
+                    <option value="detente">Détente</option>
                   </select>
                 </div>
-                <div>
-                  <label className="block text-[10px] uppercase tracking-wider text-muted mb-1">Badge</label>
-                  <input
-                    type="text" name="badge" value={form.badge} onChange={handleChange}
-                    placeholder="Ex: Populaire"
-                    className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] uppercase tracking-wider text-muted mb-1">Prix par personne (€) *</label>
-                  <input
-                    type="number" min="0" name="pricePerPerson" value={form.pricePerPerson} onChange={handleChange}
-                    className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] uppercase tracking-wider text-muted mb-1">Capacité max</label>
-                  <input
-                    type="number" min="1" name="maxCapacity" value={form.maxCapacity} onChange={handleChange}
-                    className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40"
-                  />
-                </div>
-
-                {/* Tarifs par point de départ */}
-                <div className="md:col-span-2 mt-4 bg-[#35354A]/50 p-4 rounded border border-gold/20">
-                  <h4 className="text-sm text-gold mb-3 flex items-center gap-2">
-                    <FiDollarSign size={14} /> Prix par point de départ et taille de groupe (€)
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {['Hammamet', 'Sousse', 'Tunis'].map((city) => (
-                      <div key={city} className="space-y-2 bg-[#2A2A3C] p-3 rounded border border-white/5">
-                        <p className="text-xs uppercase tracking-wider text-gold font-medium">{city}</p>
-                        {['4', '6', '8'].map((size) => (
-                          <div key={size} className="flex items-center gap-2">
-                            <span className="text-xs text-cream/70 w-14">{size} pers. :</span>
-                            <input
-                              type="number"
-                              min="0"
-                              value={form.departurePrices?.[city]?.[size] || ''}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setForm((prev) => ({
-                                  ...prev,
-                                  departurePrices: {
-                                    ...(prev.departurePrices || {}),
-                                    [city]: {
-                                      ...((prev.departurePrices && prev.departurePrices[city]) || {}),
-                                      [size]: val,
-                                    },
-                                  },
-                                }));
-                              }}
-                              placeholder="0"
-                              className="w-20 bg-dark-3 border border-white/10 rounded px-2 py-1 text-sm text-cream focus:outline-none focus:border-gold/40"
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    ))}
-                  </div>
-                  <p className="text-[10px] text-muted mt-2 italic">
-                    Laisser vide = "Sur demande" pour cette combinaison.
-                  </p>
-                </div>
-
-                {/* Programme */}
-                <div className="md:col-span-2 mt-2">
-                  <label className="block text-[10px] uppercase tracking-wider text-muted mb-2">Programme de la journée</label>
-                  {form.itinerary.map((step, index) => (
-                    <div key={index} className="flex gap-2 mb-2 items-start bg-[#35354A] p-2 rounded border border-white/10">
-                      <input type="text" placeholder="Heure (ex: 08:00)" value={step.time}
-                        onChange={(e) => updateStep(index, 'time', e.target.value)}
-                        className="w-20 bg-dark-3 border border-white/10 rounded px-2 py-1 text-sm text-cream focus:outline-none" />
-                      <input type="text" placeholder="Titre (ex: Départ)" value={step.title}
-                        onChange={(e) => updateStep(index, 'title', e.target.value)}
-                        className="flex-1 bg-dark-3 border border-white/10 rounded px-2 py-1 text-sm text-cream focus:outline-none" />
-                      <input type="text" placeholder="Description" value={step.description}
-                        onChange={(e) => updateStep(index, 'description', e.target.value)}
-                        className="flex-[2] bg-dark-3 border border-white/10 rounded px-2 py-1 text-sm text-cream focus:outline-none" />
-                      <button type="button" onClick={() => setForm({ ...form, itinerary: form.itinerary.filter((_, i) => i !== index) })}
-                        className="p-1 text-red-400 hover:text-red-300"><FiX size={16} /></button>
-                    </div>
-                  ))}
-                  <button type="button" onClick={() => setForm({ ...form, itinerary: [...form.itinerary, { time: '', title: '', description: '' }] })}
-                    className="text-xs text-gold hover:underline flex items-center gap-1 mt-1">
-                    <FiPlus size={12} /> Ajouter une étape
-                  </button>
-                </div>
-
-                {/* Inclus / Exclus */}
-                <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-                  <div>
-                    <label className="block text-[10px] uppercase tracking-wider text-muted mb-1">Inclus (un par ligne)</label>
-                    <textarea name="includes" value={form.includes} onChange={handleChange} rows="4"
-                      placeholder="Ex:&#10;L'assurance&#10;Le carburant&#10;Le transport"
-                      className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40 resize-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] uppercase tracking-wider text-muted mb-1">Non inclus (un par ligne)</label>
-                    <textarea name="excludes" value={form.excludes} onChange={handleChange} rows="4"
-                      placeholder="Ex:&#10;Les repas&#10;Les dépenses d'ordre personnel"
-                      className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40 resize-none"
-                    />
-                  </div>
-                </div>
-
-                {/* Upload image excursion */}
-                <div className="md:col-span-2 mt-2">
+                <div className="md:col-span-2">
                   <label className="block text-[10px] uppercase tracking-wider text-muted mb-1">Image de couverture</label>
                   <div className="flex items-center gap-4">
                     <label className="flex-1 cursor-pointer">
                       <div className="w-full bg-[#35354A] border border-dashed border-white/20 hover:border-gold/40 rounded px-3 py-3 text-sm text-muted flex items-center gap-2 transition-colors">
                         <FiImage size={16} className="text-gold" />
                         <span className="truncate">
-                          {imageFile ? imageFile.name : 'Choisir une image depuis l’appareil…'}
+                          {imageFile ? imageFile.name : 'Choisir une image…'}
                         </span>
                       </div>
                       <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
                     </label>
                     {imagePreview && (
                       <div className="relative">
-                        <img src={imagePreview} alt="aperçu" className="h-16 w-16 object-cover rounded border border-white/10" />
+                        <img
+                          src={imagePreview}
+                          alt="aperçu"
+                          className="h-16 w-16 object-cover rounded border border-white/10"
+                        />
                         <button
                           type="button"
                           onClick={() => { setImageFile(null); setImagePreview(null); }}
                           className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-0.5"
+                          title="Retirer"
                         >
                           <FiX size={12} />
                         </button>
                       </div>
                     )}
                   </div>
-                  <p className="text-muted text-[10px] mt-1">JPG, PNG, WEBP — max 5 Mo</p>
-                </div>
-
-                <div className="md:col-span-2 flex items-center gap-2 mt-2">
-                  <input
-                    type="checkbox" name="isFeatured" id="isFeatured"
-                    checked={form.isFeatured} onChange={handleChange}
-                    className="accent-gold"
-                  />
-                  <label htmlFor="isFeatured" className="text-sm text-muted cursor-pointer">
-                    Mettre en avant sur la page d'accueil
-                  </label>
                 </div>
               </div>
             </>
@@ -2924,17 +2730,16 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2 text-muted hover:text-cream text-sm"
+              className="px-4 py-2 text-muted hover:text-cream transition-colors"
             >
               Annuler
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="flex items-center gap-2 px-5 py-2 bg-gold text-dark-2 rounded text-sm font-medium hover:bg-gold/90 disabled:opacity-50"
+              className="px-4 py-2 bg-gold text-dark-2 rounded font-medium hover:bg-gold/90 transition-colors disabled:opacity-50"
             >
-              <FiSave size={14} />
-              {submitting ? 'Création...' : isVehicle ? 'Créer le véhicule' : "Créer l'excursion"}
+              {submitting ? 'Création...' : 'Créer'}
             </button>
           </div>
         </form>
@@ -2943,79 +2748,73 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
   );
 }
 
-function NavLink({ onClick, icon, label, active, compact = false, badge = 0 }) {
+// ------------------------------------------------------------------
+// Composants utilitaires (fin de fichier)
+// ------------------------------------------------------------------
+
+function NavLink({ onClick, icon, label, active, compact }) {
   return (
     <button
       onClick={onClick}
-      className={`w-full text-left flex items-center gap-3 px-3 py-2 text-sm rounded transition-colors ${
-        active ? 'bg-gold/10 text-gold border-l-2 border-gold' : 'text-muted hover:text-cream hover:bg-white/5'
-      } ${compact ? 'text-xs' : ''}`}
+      className={`flex items-center gap-3 w-full px-3 rounded transition-colors ${
+        compact ? 'py-1.5 text-xs' : 'py-2 text-sm'
+      } ${
+        active
+          ? 'bg-gold/10 text-gold border-l-2 border-gold'
+          : 'text-muted hover:text-cream hover:bg-white/5'
+      }`}
     >
-      <span className="text-lg">{icon}</span>
-      <span className="flex-1">{label}</span>
-      <CountBadge n={badge} />
+      <span className="text-lg shrink-0">{icon}</span>
+      <span className="flex-1 text-left truncate">{label}</span>
     </button>
   );
 }
 
 function StatCard({ title, value, change, trend, icon }) {
-  const trendColor = trend === 'up' ? 'text-green-400' : 'text-red-400';
   return (
-    <div className="bg-[#2A2A3C] border border-white/10 p-6">
-      <div className="flex items-center justify-between mb-4">
-        <div className="text-muted text-sm">{title}</div>
-        <div className="text-gold text-xl">{icon}</div>
+    <div className="bg-[#2A2A3C] border border-white/10 rounded-lg p-6">
+      <div className="flex items-start justify-between mb-4">
+        <div className="text-gold/60 text-2xl">{icon}</div>
+        <span className={`text-xs ${trend === 'up' ? 'text-green-400' : 'text-red-400'}`}>
+          {change}
+        </span>
       </div>
-      <div className="flex items-end justify-between">
-        <div className="text-3xl font-light text-cream">{value}</div>
-        <div className={`text-sm ${trendColor}`}>{change}</div>
-      </div>
+      <div className="text-2xl font-serif text-cream mb-1">{value}</div>
+      <div className="text-xs text-muted uppercase tracking-wider">{title}</div>
     </div>
   );
 }
 
-// ------------------------------------------------------------------
-// Modal de Confirmation Personnalisé (remplace window.confirm)
-// ------------------------------------------------------------------
-function ConfirmModal({ isOpen, title, message, onConfirm, onCancel, isDanger = true }) {
+function ConfirmModal({ isOpen, title, message, onConfirm, onCancel }) {
   if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-fade-in">
+    <div
+      className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[100] p-4"
+      onClick={onCancel}
+    >
       <div
-        className="bg-[#2A2A3C] border border-white/10 rounded-xl shadow-2xl max-w-md w-full p-6 animate-scale-in"
+        className="bg-[#2A2A3C] border border-white/15 rounded-xl shadow-2xl max-w-md w-full"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex flex-col items-center text-center space-y-4">
-          <div className={`w-16 h-16 rounded-full flex items-center justify-center ${isDanger ? 'bg-red-500/10 text-red-400' : 'bg-gold/10 text-gold'}`}>
-            <FiAlertTriangle size={32} />
-          </div>
-
-          <div>
-            <h3 className="text-xl font-serif text-cream">{title || 'Confirmer la suppression'}</h3>
-            <p className="text-muted text-sm mt-2">
-              {message || 'Êtes-vous sûr de vouloir effectuer cette action ? Cette opération est irréversible.'}
-            </p>
-          </div>
-
-          <div className="flex gap-3 w-full pt-4">
-            <button
-              onClick={onCancel}
-              className="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium bg-white/5 text-cream hover:bg-white/10 transition-colors"
-            >
-              Annuler
-            </button>
-            <button
-              onClick={onConfirm}
-              className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                isDanger
-                  ? 'bg-red-500 text-white hover:bg-red-600 shadow-lg shadow-red-500/20'
-                  : 'bg-gold text-dark-2 hover:bg-gold/90 shadow-lg shadow-gold/20'
-              }`}
-            >
-              Confirmer
-            </button>
-          </div>
+        <div className="px-6 py-5 border-b border-white/10">
+          <h3 className="text-lg font-serif text-cream">{title}</h3>
+        </div>
+        <div className="px-6 py-5">
+          <p className="text-sm text-cream/80">{message}</p>
+        </div>
+        <div className="px-6 py-4 border-t border-white/10 flex justify-end gap-3">
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 text-muted hover:text-cream transition-colors"
+          >
+            Annuler
+          </button>
+          <button
+            onClick={onConfirm}
+            className="px-4 py-2 bg-red-500/20 text-red-400 border border-red-500/30 rounded hover:bg-red-500/30 transition-colors font-medium"
+          >
+            Confirmer
+          </button>
         </div>
       </div>
     </div>

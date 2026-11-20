@@ -44,6 +44,16 @@ api.interceptors.response.use(
   }
 );
 
+export const priceAPI = {
+  getAll: (vehicleId) =>
+    api.get('/prices', { params: vehicleId ? { vehicleId } : {} }),
+  create: (data) => api.post('/prices', data),
+  update: (id, data) => api.put(`/prices/${id}`, data),
+  delete: (id) => api.delete(`/prices/${id}`),
+  resolve: (params) => api.get('/prices/resolve', { params }),
+  forTrip: (params) => api.get('/prices/trip', { params }),
+};
+
 // ─── Authentification ─────────────────────────────────────────────────────────
 export const authAPI = {
   login:          (data) => api.post('/auth/login', data),
