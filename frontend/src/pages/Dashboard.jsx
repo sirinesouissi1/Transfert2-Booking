@@ -53,7 +53,7 @@ import {
   FiSave,
   FiImage,
 } from 'react-icons/fi';
-
+import { ALL_LOCATIONS } from '../constants/locations';
 // URL de l'API (backend Render). Sans cette base, les fetch('/api/...') partent vers le domaine du frontend.
 const API_URL = (import.meta.env.VITE_API_URL || 'https://go-taxi-api.onrender.com/api').replace(/\/$/, '');
 
@@ -1132,14 +1132,36 @@ function VehicleDestinationPricing({ vehicle, isAdmin, onBack }) {
   const showSuccess = (msg) => toast.success(msg);
 
   const handleAdd = async () => {
-    if (!addForm.from.trim() || !addForm.to.trim() || !addForm.price) {
-      setAddError('Tous les champs sont obligatoires.');
+    // 1. Champs obligatoires
+    if (!addForm.from || !addForm.to || !addForm.price) {
+      setAddError('Veuillez sélectionner un départ, une destination et saisir un prix.');
       return;
     }
+
+    // 2. Départ ≠ Destination
+    if (addForm.from === addForm.to) {
+      setAddError('Le départ et la destination doivent être différents.');
+      return;
+    }
+
+    // 3. Prix numérique > 0
     if (isNaN(Number(addForm.price)) || Number(addForm.price) <= 0) {
       setAddError('Le prix doit être un nombre positif.');
       return;
     }
+
+    // 4. Anti-doublon (front)
+    const duplicate = prices.some(
+      (p) =>
+        (p.from || '').toLowerCase() === addForm.from.toLowerCase() &&
+        (p.to || '').toLowerCase() === addForm.to.toLowerCase() &&
+        p.tripType === addForm.tripType
+    );
+    if (duplicate) {
+      setAddError('Ce tarif existe déjà pour ce trajet et ce type.');
+      return;
+    }
+
     setAddError('');
     try {
       const res = await fetch(`${API_URL}/prices`, {
@@ -1174,7 +1196,19 @@ function VehicleDestinationPricing({ vehicle, isAdmin, onBack }) {
   const cancelEdit = () => { setEditingId(null); setEditForm({}); };
 
   const saveEdit = async (id) => {
-    if (!editForm.from.trim() || !editForm.to.trim() || !editForm.price) return;
+    if (!editForm.from || !editForm.to || !editForm.price) {
+      toast.error('Veuillez remplir tous les champs.');
+      return;
+    }
+    if (editForm.from === editForm.to) {
+      toast.error('Le départ et la destination doivent être différents.');
+      return;
+    }
+    if (isNaN(Number(editForm.price)) || Number(editForm.price) <= 0) {
+      toast.error('Le prix doit être un nombre positif.');
+      return;
+    }
+
     try {
       await fetch(`${API_URL}/prices/${id}`, {
         method: 'PUT',
@@ -1191,11 +1225,10 @@ function VehicleDestinationPricing({ vehicle, isAdmin, onBack }) {
       showSuccess('Tarif mis à jour.');
     } catch (err) {
       console.error(err);
+      toast.error('Erreur lors de la mise à jour du tarif.');
     }
   };
 
-  // CORRIGÉ : ce composant n'a pas accès à askConfirmation / fetchData / setError du Dashboard.
-  // On supprime donc le tarif directement via l'API /prices.
   const handleDelete = async (id) => {
     if (!window.confirm('Voulez-vous vraiment supprimer ce tarif ?')) return;
     try {
@@ -1253,21 +1286,29 @@ function VehicleDestinationPricing({ vehicle, isAdmin, onBack }) {
           <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 items-end">
             <div>
               <label className="block text-xs text-muted mb-1">De</label>
-              <input
-                type="text" placeholder="Ex: Tunis"
+              <select
                 value={addForm.from}
                 onChange={(e) => setAddForm({ ...addForm, from: e.target.value })}
-                className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-sm text-cream placeholder-muted/40 focus:outline-none focus:border-gold/40"
-              />
+                className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40"
+              >
+                <option value="">— Choisir —</option>
+                {ALL_LOCATIONS.map((loc) => (
+                  <option key={loc} value={loc}>{loc}</option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="block text-xs text-muted mb-1">À</label>
-              <input
-                type="text" placeholder="Ex: Hammamet"
+              <select
                 value={addForm.to}
                 onChange={(e) => setAddForm({ ...addForm, to: e.target.value })}
-                className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-sm text-cream placeholder-muted/40 focus:outline-none focus:border-gold/40"
-              />
+                className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40"
+              >
+                <option value="">— Choisir —</option>
+                {ALL_LOCATIONS.map((loc) => (
+                  <option key={loc} value={loc}>{loc}</option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="block text-xs text-muted mb-1">Type de voyage</label>
@@ -1335,12 +1376,28 @@ function VehicleDestinationPricing({ vehicle, isAdmin, onBack }) {
                     {editingId === p._id ? (
                       <>
                         <td className="px-6 py-3">
-                          <input value={editForm.from} onChange={(e) => setEditForm({ ...editForm, from: e.target.value })}
-                            className="bg-[#35354A] border border-gold/30 rounded px-2 py-1 text-cream text-sm w-full focus:outline-none" />
+                          <select
+                            value={editForm.from}
+                            onChange={(e) => setEditForm({ ...editForm, from: e.target.value })}
+                            className="bg-[#35354A] border border-gold/30 rounded px-2 py-1 text-cream text-sm w-full focus:outline-none"
+                          >
+                            <option value="">— Choisir —</option>
+                            {ALL_LOCATIONS.map((loc) => (
+                              <option key={loc} value={loc}>{loc}</option>
+                            ))}
+                          </select>
                         </td>
                         <td className="px-6 py-3">
-                          <input value={editForm.to} onChange={(e) => setEditForm({ ...editForm, to: e.target.value })}
-                            className="bg-[#35354A] border border-gold/30 rounded px-2 py-1 text-cream text-sm w-full focus:outline-none" />
+                          <select
+                            value={editForm.to}
+                            onChange={(e) => setEditForm({ ...editForm, to: e.target.value })}
+                            className="bg-[#35354A] border border-gold/30 rounded px-2 py-1 text-cream text-sm w-full focus:outline-none"
+                          >
+                            <option value="">— Choisir —</option>
+                            {ALL_LOCATIONS.map((loc) => (
+                              <option key={loc} value={loc}>{loc}</option>
+                            ))}
+                          </select>
                         </td>
                         <td className="px-6 py-3">
                           <select value={editForm.tripType} onChange={(e) => setEditForm({ ...editForm, tripType: e.target.value })}
