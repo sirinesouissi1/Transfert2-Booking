@@ -9,6 +9,7 @@ const ALLOWED_FIELDS = [
   'bookingType', 'tripType', 'from', 'to',
   'departureDate', 'returnDate', 'vehicle', 'totalPrice',
   'passengers', 'flightNumber', 'specialRequests',
+  'language', // ✅ AJOUT
 ];
 
 exports.createBooking = asyncHandler(async (req, res) => {
@@ -22,6 +23,9 @@ exports.createBooking = asyncHandler(async (req, res) => {
 
   // Prix absent ou invalide = 0 ("sur demande")
   body.totalPrice = Number(body.totalPrice) || 0;
+
+  // ✅ Sécurise la langue
+  body.language = body.language === 'en' ? 'en' : 'fr';
 
   if (!body.vehicle || !mongoose.Types.ObjectId.isValid(body.vehicle)) {
     res.status(400);

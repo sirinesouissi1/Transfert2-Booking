@@ -8,23 +8,22 @@ const bookingSchema = new mongoose.Schema({
   whatsapp:  { type: Boolean, default: true },
 
   bookingType: { type: String, default: 'transfer' },
-tripType: { 
-  type: String, 
-  enum: ['one_way', 'round_trip'],  // ← was 'one-way'/'round-trip'
-  required: true 
-},
+  tripType: {
+    type: String,
+    enum: ['one_way', 'round_trip'],
+    required: true
+  },
   from:        { type: String, required: true },
   to:          { type: String, required: true },
   departureDate: { type: Date, required: true },
   returnDate:    { type: Date },
 
-  // --- RÉFÉRENCE À LA TABLE VEHICLE ---
-  vehicle: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'Vehicle', 
-    required: true 
+  vehicle: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Vehicle',
+    required: true
   },
-  
+
   totalPrice:  { type: Number, required: true },
 
   passengers: {
@@ -34,10 +33,17 @@ tripType: {
   flightNumber:   { type: String },
   specialRequests: { type: String },
 
-  status: { 
-    type: String, 
-    enum: ['pending', 'confirmed', 'completed', 'cancelled'], 
-    default: 'pending' 
+  // ✅ AJOUT : langue de l'utilisateur pour les emails
+  language: {
+    type: String,
+    enum: ['fr', 'en'],
+    default: 'fr',
+  },
+
+  status: {
+    type: String,
+    enum: ['pending', 'confirmed', 'completed', 'cancelled'],
+    default: 'pending'
   },
   confirmationCode: { type: String, unique: true }
 }, { timestamps: true });

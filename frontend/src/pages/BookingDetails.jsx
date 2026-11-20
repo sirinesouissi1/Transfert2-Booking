@@ -1,14 +1,101 @@
-//formulaire de reservayion transfert
+// formulaire de réservation transfert
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { 
-  MapPin, ArrowRight, Check, Plane, User, Phone, Search, ChevronDown, Globe 
+import {
+  MapPin, ArrowRight, Check, Plane, User, Search, ChevronDown
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
+import { useLanguage } from '../context/LanguageContext'; // <-- AJOUT
+// ⚠️ Assurez-vous que ALL_COUNTRIES est importé quelque part :
+// import { ALL_COUNTRIES } from '../data/countries';
+
 const API_URL = (import.meta.env.VITE_API_URL || 'https://go-taxi-api.onrender.com/api').replace(/\/$/, '');
-// Liste complète et triée des préfixes de pays
+
+// --- AJOUT DES TRADUCTIONS ---
+const translations = {
+  fr: {
+    title: "Finalisez votre",
+    titleEm: "réservation",
+    personalInfo: "Informations Personnelles",
+    firstName: "Prénom",
+    lastName: "Nom",
+    email: "Email",
+    phone: "Numéro de téléphone",
+    flightNumber: "Numéro de Vol",
+    adults: "Adultes",
+    children: "Enfants",
+    requests: "Demandes particulières",
+    requestsPlaceholder: "Ex: Siège bébé requis, besoin d'aide pour bagages...",
+    submitting: "Envoi en cours...",
+    confirmBooking: "Confirmer la réservation",
+    tripDetails: "Détails du Trajet",
+    payToDriver: "Paiement au chauffeur",
+    totalPrice: "Prix Total",
+    priceOnRequest: "Sur demande",
+    departure: "Départ",
+    destination: "Destination",
+    placeholderFirstName: "Entrez votre prénom",
+    placeholderLastName: "Entrez votre nom",
+    placeholderEmail: "Entrez votre email",
+    placeholderFlight: "Entrez votre numéro de vol",
+    searchCountry: "Rechercher un pays...",
+    noCountryFound: "Aucun pays trouvé",
+    // Messages d'erreur
+    errFirstName: "Prénom",
+    errLastName: "Nom",
+    errEmail: "Email",
+    errPhone: "Téléphone",
+    errFieldsRequired: "Veuillez remplir les champs suivants",
+    errPhoneLength: "Le numéro doit contenir {expected} chiffre{s} pour {country} ({code}). Actuellement : {current}.",
+    errPhoneGeneric: "Le numéro doit contenir entre 6 et 15 chiffres.",
+    errInvalidDate: "Date de départ invalide. Veuillez recommencer la recherche.",
+    errMissingVehicle: "Véhicule manquant. Veuillez recommencer la recherche.",
+    errBooking: "Erreur lors de la réservation",
+    errServer: "Impossible de contacter le serveur",
+  },
+  en: {
+    title: "Complete your",
+    titleEm: "booking",
+    personalInfo: "Personal Information",
+    firstName: "First name",
+    lastName: "Last name",
+    email: "Email",
+    phone: "Phone number",
+    flightNumber: "Flight number",
+    adults: "Adults",
+    children: "Children",
+    requests: "Special requests",
+    requestsPlaceholder: "E.g.: Baby seat required, help with luggage...",
+    submitting: "Submitting...",
+    confirmBooking: "Confirm booking",
+    tripDetails: "Trip Details",
+    payToDriver: "Payment to driver",
+    totalPrice: "Total Price",
+    priceOnRequest: "On request",
+    departure: "Departure",
+    destination: "Destination",
+    placeholderFirstName: "Enter your first name",
+    placeholderLastName: "Enter your last name",
+    placeholderEmail: "Enter your email",
+    placeholderFlight: "Enter your flight number",
+    searchCountry: "Search for a country...",
+    noCountryFound: "No country found",
+    // Error messages
+    errFirstName: "First name",
+    errLastName: "Last name",
+    errEmail: "Email",
+    errPhone: "Phone",
+    errFieldsRequired: "Please fill in the following fields",
+    errPhoneLength: "The number must contain {expected} digit{s} for {country} ({code}). Currently: {current}.",
+    errPhoneGeneric: "The number must contain between 6 and 15 digits.",
+    errInvalidDate: "Invalid departure date. Please restart your search.",
+    errMissingVehicle: "Missing vehicle. Please restart your search.",
+    errBooking: "Error during booking",
+    errServer: "Unable to reach the server",
+  }
+};
 const ALL_COUNTRIES = [
     { name: "Afghanistan", code: "+93", flag: "🇦🇫" },
     { name: "Afrique du Sud", code: "+27", flag: "🇿🇦" },
@@ -255,85 +342,64 @@ const ALL_COUNTRIES = [
     { name: "Zambie", code: "+260", flag: "🇿🇲" },
     { name: "Zimbabwe", code: "+263", flag: "🇿🇼" }
 ].sort((a, b) => a.name.localeCompare(b.name));
-
 // Longueur attendue du numéro local (sans le préfixe pays) par code pays.
-// Basé sur les standards E.164 / plans de numérotation nationaux.
-// Si un pays n'est pas listé, on autorise 6 à 15 chiffres.
 const PHONE_LENGTHS = {
-  '+216': 8,   // Tunisie
-  '+33': 9,    // France
-  '+32': 9,    // Belgique
-  '+41': 9,    // Suisse
-  '+49': [10, 11], // Allemagne (variable)
-  '+39': [9, 10],  // Italie
-  '+34': 9,    // Espagne
-  '+44': 10,   // Royaume-Uni
-  '+1': 10,    // USA / Canada
-  '+212': 9,   // Maroc
-  '+213': 9,   // Algérie
-  '+20': 10,   // Égypte
-  '+966': 9,   // Arabie saoudite
-  '+971': 9,   // Émirats
-  '+974': 8,   // Qatar
-  '+965': 8,   // Koweït
-  '+973': 8,   // Bahreïn
-  '+968': 8,   // Oman
-  '+90': 10,   // Turquie
-  '+7': 10,    // Russie
-  '+55': [10, 11], // Brésil
-  '+86': 11,   // Chine
-  '+81': 10,   // Japon
-  '+91': 10,   // Inde
-  '+61': 9,    // Australie
-  '+27': 9,    // Afrique du Sud
-  '+221': 9,   // Sénégal
-  '+225': 10,  // Côte d'Ivoire
-  '+237': 9,   // Cameroun
+  '+216': 8, '+33': 9, '+32': 9, '+41': 9, '+49': [10, 11],
+  '+39': [9, 10], '+34': 9, '+44': 10, '+1': 10, '+212': 9,
+  '+213': 9, '+20': 10, '+966': 9, '+971': 9, '+974': 8,
+  '+965': 8, '+973': 8, '+968': 8, '+90': 10, '+7': 10,
+  '+55': [10, 11], '+86': 11, '+81': 10, '+91': 10, '+61': 9,
+  '+27': 9, '+221': 9, '+225': 10, '+237': 9,
 };
 
-// Retourne un tableau de longueurs acceptées pour un préfixe donné
 const getAllowedLengths = (prefixCode) => {
   const v = PHONE_LENGTHS[prefixCode];
   if (Array.isArray(v)) return v;
   if (typeof v === 'number') return [v];
-  return null; // inconnu → règle générique
+  return null;
 };
-
 
 export default function BookingDetails() {
   const location = useLocation();
   const navigate = useNavigate();
   const params = new URLSearchParams(location.search);
 
-const [phoneError, setPhoneError] = useState('');
+  // --- RECUPERATION DE LA LANGUE ---
+  const { language } = useLanguage();
+  const t = translations[language];
 
-// Valide le numéro selon le préfixe. Retourne un message d'erreur ou ''
-const validatePhone = (phone, prefix) => {
-  const digits = (phone || '').replace(/\D/g, '');
-  if (!digits) return ''; // vide → géré par validateForm (champ requis)
+  const [phoneError, setPhoneError] = useState('');
 
-  const allowed = getAllowedLengths(prefix.code);
+  // Valide le numéro selon le préfixe. Retourne un message d'erreur ou ''
+  const validatePhone = (phone, prefix) => {
+    const digits = (phone || '').replace(/\D/g, '');
+    if (!digits) return '';
 
-  if (allowed) {
-    if (!allowed.includes(digits.length)) {
-      const expected = allowed.join(' ou ');
-      return `Le numéro doit contenir ${expected} chiffre${allowed.length > 1 ? 's' : ''} pour ${prefix.name} (${prefix.code}). Actuellement : ${digits.length}.`;
+    const allowed = getAllowedLengths(prefix.code);
+
+    if (allowed) {
+      if (!allowed.includes(digits.length)) {
+        const expected = allowed.join(language === 'fr' ? ' ou ' : ' or ');
+        return t.errPhoneLength
+          .replace('{expected}', expected)
+          .replace('{s}', allowed.length > 1 ? 's' : '')
+          .replace('{country}', prefix.name)
+          .replace('{code}', prefix.code)
+          .replace('{current}', digits.length);
+      }
+      return '';
+    }
+
+    if (digits.length < 6 || digits.length > 15) {
+      return t.errPhoneGeneric;
     }
     return '';
-  }
+  };
 
-  // Règle générique pour les pays non listés
-  if (digits.length < 6 || digits.length > 15) {
-    return 'Le numéro doit contenir entre 6 et 15 chiffres.';
-  }
-  return '';
-};
-
-  // Récupération des données : price peut être null (si absent)
   const bookingData = useMemo(() => ({
     vehicleId: params.get('vehicleId') || '',
     vehicleName: params.get('vehicleName') || 'Berline Affaires',
-    price: params.get('price') || null,  // ← modifié : null au lieu de '0'
+    price: params.get('price') || null,
     image: params.get('image') || 'https://i.ibb.co/vYm6D4Y/skoda-octavia.png',
     from: params.get('from') || 'Tunis Carthage Airport',
     to: params.get('to') || 'Sousse',
@@ -352,199 +418,199 @@ const validatePhone = (phone, prefix) => {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-const validateForm = () => {
-  const errors = [];
-  if (!formData.prenom.trim()) errors.push('Prénom');
-  if (!formData.nom.trim()) errors.push('Nom');
-  if (!formData.email.trim()) errors.push('Email');
-  if (!formData.phone.trim()) errors.push('Téléphone');
-  else {
+  const validateForm = () => {
+    const errors = [];
+    if (!formData.prenom.trim()) errors.push(t.errFirstName);
+    if (!formData.nom.trim()) errors.push(t.errLastName);
+    if (!formData.email.trim()) errors.push(t.errEmail);
+    if (!formData.phone.trim()) errors.push(t.errPhone);
+    else {
+      const phoneErr = validatePhone(formData.phone, formData.prefix);
+      if (phoneErr) {
+        setPhoneError(phoneErr);
+        errors.push(`${t.errPhone} (${phoneErr})`);
+      }
+    }
+    return errors;
+  };
+
+  const handleConfirm = async (e) => {
+    e.preventDefault();
+
+    const errors = validateForm();
+    if (errors.length > 0) {
+      toast.error(`${t.errFieldsRequired} : ${errors.join(', ')}`, {
+        duration: 5000,
+        style: { background: '#1A1A24', color: '#F8F5EE', border: '1px solid #C9A84C', borderRadius: '4px' },
+        iconTheme: { primary: '#ef4444', secondary: '#0A0A0F' },
+      });
+      return;
+    }
     const phoneErr = validatePhone(formData.phone, formData.prefix);
     if (phoneErr) {
-      // On affiche aussi l'erreur sous le champ
       setPhoneError(phoneErr);
-      errors.push(`Téléphone (${phoneErr})`);
+      toast.error(phoneErr, {
+        duration: 5000,
+        style: { background: '#1A1A24', color: '#F8F5EE', border: '1px solid #C9A84C', borderRadius: '4px' },
+        iconTheme: { primary: '#ef4444', secondary: '#0A0A0F' },
+      });
+      return;
     }
-  }
-  return errors;
-};
- const handleConfirm = async (e) => {
-  e.preventDefault();
+    setIsSubmitting(true);
 
-  const errors = validateForm();
-  if (errors.length > 0) {
-    toast.error(`Veuillez remplir les champs suivants : ${errors.join(', ')}`, {
-      duration: 5000,
-      style: { background: '#1A1A24', color: '#F8F5EE', border: '1px solid #C9A84C', borderRadius: '4px' },
-      iconTheme: { primary: '#ef4444', secondary: '#0A0A0F' },
-    });
-    return;
-  }
-const phoneErr = validatePhone(formData.phone, formData.prefix);
-if (phoneErr) {
-  setPhoneError(phoneErr);
-  toast.error(phoneErr, {
-    duration: 5000,
-    style: { background: '#1A1A24', color: '#F8F5EE', border: '1px solid #C9A84C', borderRadius: '4px' },
-    iconTheme: { primary: '#ef4444', secondary: '#0A0A0F' },
-  });
-  return;
-}
-  setIsSubmitting(true);
+    try {
+      const departure = new Date(bookingData.departureDate);
+      if (!bookingData.departureDate || isNaN(departure.getTime())) {
+        throw new Error(t.errInvalidDate);
+      }
+      if (!bookingData.vehicleId) {
+        throw new Error(t.errMissingVehicle);
+      }
 
-  try {
-    const departure = new Date(bookingData.departureDate);
-    if (!bookingData.departureDate || isNaN(departure.getTime())) {
-      throw new Error('Date de départ invalide. Veuillez recommencer la recherche.');
+      let returnDateIso = null;
+      if (bookingData.returnDate) {
+        const ret = new Date(bookingData.returnDate);
+        if (!isNaN(ret.getTime())) returnDateIso = ret.toISOString();
+      }
+
+      const finalPrice = bookingData.price ? parseFloat(bookingData.price) : 0;
+
+      const bookingPayload = {
+        firstName: formData.prenom.trim(),
+        lastName: formData.nom.trim(),
+        email: formData.email.trim(),
+        phone: `${formData.prefix.code} ${formData.phone.trim()}`,
+        whatsapp: formData.whatsapp,
+        bookingType: 'transfer',
+        tripType: (params.get('tripType') || 'one_way').replace(/-/g, '_'),
+        from: bookingData.from,
+        to: bookingData.to,
+        departureDate: departure.toISOString(),
+        returnDate: returnDateIso,
+        vehicle: bookingData.vehicleId,
+        totalPrice: isNaN(finalPrice) ? 0 : finalPrice,
+        passengers: { adults: formData.adults, children: formData.children },
+        flightNumber: formData.flightNumber,
+        specialRequests: formData.requests,
+      };
+
+      const response = await fetch(`${API_URL}/bookings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bookingPayload),
+      });
+
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || t.errBooking);
+      }
+
+      navigate(`/confirmation?code=${result.booking.confirmationCode}`);
+    } catch (error) {
+      console.error('Erreur:', error);
+      toast.error(error.message || t.errServer, {
+        duration: 5000,
+        style: { background: '#1A1A24', color: '#F8F5EE', border: '1px solid #C9A84C', borderRadius: '4px' },
+        iconTheme: { primary: '#ef4444', secondary: '#0A0A0F' },
+      });
+    } finally {
+      setIsSubmitting(false);
     }
-    if (!bookingData.vehicleId) {
-      throw new Error('Véhicule manquant. Veuillez recommencer la recherche.');
-    }
-
-    let returnDateIso = null;
-    if (bookingData.returnDate) {
-      const ret = new Date(bookingData.returnDate);
-      if (!isNaN(ret.getTime())) returnDateIso = ret.toISOString();
-    }
-
-    // Prix absent = 0 ("sur demande")
-    const finalPrice = bookingData.price ? parseFloat(bookingData.price) : 0;
-
-    const bookingPayload = {
-      firstName: formData.prenom.trim(),
-      lastName: formData.nom.trim(),
-      email: formData.email.trim(),
-      phone: `${formData.prefix.code} ${formData.phone.trim()}`,
-      whatsapp: formData.whatsapp,
-      bookingType: 'transfer',
-      tripType: (params.get('tripType') || 'one_way').replace(/-/g, '_'),      from: bookingData.from,
-      to: bookingData.to,
-      departureDate: departure.toISOString(),
-      returnDate: returnDateIso,
-      vehicle: bookingData.vehicleId,
-      totalPrice: isNaN(finalPrice) ? 0 : finalPrice,
-      passengers: { adults: formData.adults, children: formData.children },
-      flightNumber: formData.flightNumber,
-      specialRequests: formData.requests,
-    };
-
-    const response = await fetch(`${API_URL}/bookings`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(bookingPayload),
-    });
-
-    const result = await response.json().catch(() => ({}));
-
-    if (!response.ok || !result.success) {
-      throw new Error(result.message || 'Erreur lors de la réservation');
-    }
-
-    navigate(`/confirmation?code=${result.booking.confirmationCode}`);
-  } catch (error) {
-    console.error('Erreur:', error);
-    toast.error(error.message || 'Impossible de contacter le serveur', {
-      duration: 5000,
-      style: { background: '#1A1A24', color: '#F8F5EE', border: '1px solid #C9A84C', borderRadius: '4px' },
-      iconTheme: { primary: '#ef4444', secondary: '#0A0A0F' },
-    });
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+  };
 
   return (
     <div className="bg-dark-DEFAULT min-h-screen font-sans text-cream selection:bg-gold selection:text-dark">
       <Navbar />
       <main className="max-w-7xl mx-auto px-6 pt-32 pb-20">
-        
+
         <div className="flex flex-col items-center mb-12 animate-fade-in">
-            <h1 className="font-serif text-4xl md:text-5xl mb-8 text-center tracking-tight text-white">
-                Finalisez votre <em className="text-gold italic underline decoration-gold/30 underline-offset-8">réservation</em>
-            </h1>
-            <div className="flex items-center justify-center w-full max-w-2xl px-4">
-                <StepIcon number="1" completed={true} />
-                <div className="flex-1 h-[1px] bg-gold/30 mx-4"></div>
-                <StepIcon number="2" completed={true} />
-                <div className="flex-1 h-[1px] bg-gold/30 mx-4"></div>
-                <StepIcon number="3" active={true} />
-            </div>
+          <h1 className="font-serif text-4xl md:text-5xl mb-8 text-center tracking-tight text-white">
+            {t.title} <em className="text-gold italic underline decoration-gold/30 underline-offset-8">{t.titleEm}</em>
+          </h1>
+          <div className="flex items-center justify-center w-full max-w-2xl px-4">
+            <StepIcon number="1" completed={true} />
+            <div className="flex-1 h-[1px] bg-gold/30 mx-4"></div>
+            <StepIcon number="2" completed={true} />
+            <div className="flex-1 h-[1px] bg-gold/30 mx-4"></div>
+            <StepIcon number="3" active={true} />
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
           <div className="lg:col-span-8 space-y-8 animate-fade-up">
             <div className="bg-dark-2/40 backdrop-blur-xl border border-white/10 p-8 rounded-xs relative">
               <h2 className="font-serif text-2xl mb-8 flex items-center gap-3 border-b border-white/5 pb-4">
-                <User className="text-gold" size={24} /> Informations Personnelles
+                <User className="text-gold" size={24} /> {t.personalInfo}
               </h2>
 
               <form onSubmit={handleConfirm} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <FormInput label="Prénom" onChange={v => setFormData({...formData, prenom: v})} />
-                  <FormInput label="Nom" onChange={v => setFormData({...formData, nom: v})} />
+                  <FormInput label={t.firstName} placeholder={t.placeholderFirstName} onChange={v => setFormData({...formData, prenom: v})} />
+                  <FormInput label={t.lastName} placeholder={t.placeholderLastName} onChange={v => setFormData({...formData, nom: v})} />
                 </div>
 
-                <FormInput label="Email" type="email" onChange={v => setFormData({...formData, email: v})} />
+                <FormInput label={t.email} placeholder={t.placeholderEmail} type="email" onChange={v => setFormData({...formData, email: v})} />
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-  <label className="text-[10px] uppercase tracking-[3px] text-gold/60 ml-1">Numéro de téléphone</label>
-  <div className="flex gap-2 h-12">
-    <GlobalCountrySelect
-      selected={formData.prefix}
-      onSelect={(c) => {
-        setFormData({ ...formData, prefix: c });
-        // Revalide avec le nouveau préfixe
-        setPhoneError(validatePhone(formData.phone, c));
-      }}
-    />
-    <input
-      type="tel"
-      value={formData.phone}
-      className={`flex-1 bg-white/5 border px-4 py-3 text-sm focus:outline-none text-cream transition-all ${
-        phoneError ? 'border-red-500/60 focus:border-red-500' : 'border-white/10 focus:border-gold'
-      }`}
-      placeholder="00 00 00 00"
-      onChange={e => {
-        const val = e.target.value;
-        setFormData({ ...formData, phone: val });
-        setPhoneError(validatePhone(val, formData.prefix));
-      }}
-    />
-  </div>
-  {phoneError && (
-    <p className="text-red-400 text-[11px] mt-1 ml-1 flex items-center gap-1.5 animate-fade-in">
-      <span className="inline-block w-1 h-1 rounded-full bg-red-400" />
-      {phoneError}
-    </p>
-  )}
-</div>
+                    <label className="text-[10px] uppercase tracking-[3px] text-gold/60 ml-1">{t.phone}</label>
+                    <div className="flex gap-2 h-12">
+                      <GlobalCountrySelect
+                        selected={formData.prefix}
+                        onSelect={(c) => {
+                          setFormData({ ...formData, prefix: c });
+                          setPhoneError(validatePhone(formData.phone, c));
+                        }}
+                        t={t}
+                      />
+                      <input
+                        type="tel"
+                        value={formData.phone}
+                        className={`flex-1 bg-white/5 border px-4 py-3 text-sm focus:outline-none text-cream transition-all ${
+                          phoneError ? 'border-red-500/60 focus:border-red-500' : 'border-white/10 focus:border-gold'
+                        }`}
+                        placeholder="00 00 00 00"
+                        onChange={e => {
+                          const val = e.target.value;
+                          setFormData({ ...formData, phone: val });
+                          setPhoneError(validatePhone(val, formData.prefix));
+                        }}
+                      />
+                    </div>
+                    {phoneError && (
+                      <p className="text-red-400 text-[11px] mt-1 ml-1 flex items-center gap-1.5 animate-fade-in">
+                        <span className="inline-block w-1 h-1 rounded-full bg-red-400" />
+                        {phoneError}
+                      </p>
+                    )}
+                  </div>
 
-                  <FormInput label="Numéro de Vol" icon={<Plane size={16}/>} onChange={v => setFormData({...formData, flightNumber: v})} />
+                  <FormInput label={t.flightNumber} placeholder={t.placeholderFlight} icon={<Plane size={16}/>} onChange={v => setFormData({...formData, flightNumber: v})} />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
-                   <Counter label="Adultes" value={formData.adults} onUpdate={v => setFormData({...formData, adults: v})} />
-                   <Counter label="Enfants" value={formData.children} onUpdate={v => setFormData({...formData, children: v})} />
+                  <Counter label={t.adults} value={formData.adults} onUpdate={v => setFormData({...formData, adults: v})} />
+                  <Counter label={t.children} value={formData.children} onUpdate={v => setFormData({...formData, children: v})} />
                 </div>
 
                 <div className="space-y-2">
-                    <label className="text-[10px] uppercase tracking-[3px] text-gold/60 ml-1">Demandes particulières</label>
-                    <textarea 
-                        rows="3" 
-                        className="w-full bg-white/5 border border-white/10 p-4 text-sm focus:border-gold outline-none text-cream resize-none"
-                        placeholder="Ex: Siège bébé requis, besoin d'aide pour bagages..."
-                        onChange={e => setFormData({...formData, requests: e.target.value})}
-                    ></textarea>
+                  <label className="text-[10px] uppercase tracking-[3px] text-gold/60 ml-1">{t.requests}</label>
+                  <textarea
+                    rows="3"
+                    className="w-full bg-white/5 border border-white/10 p-4 text-sm focus:border-gold outline-none text-cream resize-none"
+                    placeholder={t.requestsPlaceholder}
+                    onChange={e => setFormData({...formData, requests: e.target.value})}
+                  ></textarea>
                 </div>
 
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   disabled={isSubmitting}
                   className="group relative flex items-center justify-center gap-4 px-16 py-6 bg-gold text-dark uppercase text-xs tracking-[4px] font-bold transition-all overflow-hidden w-full disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <span className="relative z-10 flex items-center gap-3 italic">
-                    {isSubmitting ? 'Envoi en cours...' : 'Confirmer la réservation'}
+                    {isSubmitting ? t.submitting : t.confirmBooking}
                     {!isSubmitting && <ArrowRight size={18} />}
                   </span>
                   {!isSubmitting && (
@@ -556,26 +622,26 @@ if (phoneErr) {
           </div>
 
           <div className="lg:col-span-4 animate-fade-in delay-200">
-             <div className="bg-dark-2/40 backdrop-blur-xl border border-white/10 p-6 rounded-xs sticky top-32">
-              <h3 className="font-serif text-xl mb-6 border-b border-white/5 pb-4 text-gold">Détails du Trajet</h3>
+            <div className="bg-dark-2/40 backdrop-blur-xl border border-white/10 p-6 rounded-xs sticky top-32">
+              <h3 className="font-serif text-xl mb-6 border-b border-white/5 pb-4 text-gold">{t.tripDetails}</h3>
               <div className="mb-8 text-center bg-white/5 p-4 rounded-xs">
-                 <img src={bookingData.image} alt="car" className="w-40 mx-auto mb-4 drop-shadow-[0_20px_20px_rgba(0,0,0,0.5)]" />
-                 <p className="font-serif text-xl text-white">{bookingData.vehicleName}</p>
-                 <span className="inline-block text-[9px] uppercase tracking-[3px] text-orange-400 mt-2">Paiement au chauffeur</span>
+                <img src={bookingData.image} alt="car" className="w-40 mx-auto mb-4 drop-shadow-[0_20px_20px_rgba(0,0,0,0.5)]" />
+                <p className="font-serif text-xl text-white">{bookingData.vehicleName}</p>
+                <span className="inline-block text-[9px] uppercase tracking-[3px] text-orange-400 mt-2">{t.payToDriver}</span>
               </div>
-              
+
               <div className="bg-gold text-dark p-4 flex justify-between items-center font-bold mb-8">
-                 <span className="text-[10px] uppercase tracking-widest">Prix Total</span>
-                 {bookingData.price ? (
-                   <span className="text-2xl font-serif">{bookingData.price} €</span>
-                 ) : (
-                   <span className="text-sm font-serif italic">Sur demande</span>
-                 )}
+                <span className="text-[10px] uppercase tracking-widest">{t.totalPrice}</span>
+                {bookingData.price ? (
+                  <span className="text-2xl font-serif">{bookingData.price} €</span>
+                ) : (
+                  <span className="text-sm font-serif italic">{t.priceOnRequest}</span>
+                )}
               </div>
 
               <div className="space-y-6">
-                 <JourneyStep label="Départ" value={bookingData.from} icon={<Plane size={14}/>} />
-                 <JourneyStep label="Destination" value={bookingData.to} icon={<MapPin size={14}/>} isLast />
+                <JourneyStep label={t.departure} value={bookingData.from} icon={<Plane size={14}/>} />
+                <JourneyStep label={t.destination} value={bookingData.to} icon={<MapPin size={14}/>} isLast />
               </div>
             </div>
           </div>
@@ -586,122 +652,122 @@ if (phoneErr) {
   );
 }
 
-// --- SOUS-COMPOSANTS (inchangés) ---
-function GlobalCountrySelect({ selected, onSelect }) {
-    const [isOpen, setIsOpen] = useState(false);
-    const [search, setSearch] = useState("");
-    const dropdownRef = useRef(null);
+// --- SOUS-COMPOSANTS ---
+function GlobalCountrySelect({ selected, onSelect, t }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const dropdownRef = useRef(null);
 
-    useEffect(() => {
-        const close = (e) => { if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setIsOpen(false); };
-        document.addEventListener("mousedown", close);
-        return () => document.removeEventListener("mousedown", close);
-    }, []);
+  useEffect(() => {
+    const close = (e) => { if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setIsOpen(false); };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, []);
 
-    const filtered = ALL_COUNTRIES.filter(c => 
-        c.name.toLowerCase().includes(search.toLowerCase()) || c.code.includes(search)
-    );
+  const filtered = ALL_COUNTRIES.filter(c =>
+    c.name.toLowerCase().includes(search.toLowerCase()) || c.code.includes(search)
+  );
 
-    return (
-        <div className="relative" ref={dropdownRef}>
-            <button 
-                type="button"
-                onClick={() => setIsOpen(!isOpen)}
-                className="h-full bg-white/5 border border-white/10 px-4 flex items-center gap-3 hover:border-gold transition-all text-sm min-w-[110px]"
-            >
-                <span className="text-lg">{selected.flag}</span>
-                <span className="font-bold text-gold">{selected.code}</span>
-                <ChevronDown size={14} className={`transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
-            </button>
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="h-full bg-white/5 border border-white/10 px-4 flex items-center gap-3 hover:border-gold transition-all text-sm min-w-[110px]"
+      >
+        <span className="text-lg">{selected.flag}</span>
+        <span className="font-bold text-gold">{selected.code}</span>
+        <ChevronDown size={14} className={`transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
 
-            {isOpen && (
-                <div className="absolute top-full left-0 mt-2 w-72 bg-dark-DEFAULT border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[100] animate-slide-up">
-                    <div className="p-3 border-b border-white/5 bg-dark-2">
-                        <div className="relative">
-                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20" />
-                            <input 
-                                autoFocus
-                                type="text" 
-                                placeholder="Rechercher un pays..." 
-                                className="w-full bg-white/5 border border-white/10 pl-9 pr-3 py-2 text-[11px] outline-none focus:border-gold text-cream"
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                            />
-                        </div>
-                    </div>
-                    <div className="max-h-64 overflow-y-auto custom-scrollbar bg-dark-2/90">
-                        {filtered.length > 0 ? filtered.map((c) => (
-                            <div 
-                                key={c.name + c.code}
-                                onClick={() => { onSelect(c); setIsOpen(false); setSearch(""); }}
-                                className="px-4 py-3 flex items-center justify-between hover:bg-gold hover:text-dark cursor-pointer transition-colors border-b border-white/5 last:border-0"
-                            >
-                                <div className="flex items-center gap-3">
-                                    <span className="text-lg">{c.flag}</span>
-                                    <span className="text-xs font-medium uppercase tracking-wider">{c.name}</span>
-                                </div>
-                                <span className="text-[10px] font-bold opacity-60 italic">{c.code}</span>
-                            </div>
-                        )) : <div className="p-4 text-center text-xs text-cream/20 italic">Aucun pays trouvé</div>}
-                    </div>
+      {isOpen && (
+        <div className="absolute top-full left-0 mt-2 w-72 bg-dark-DEFAULT border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[100] animate-slide-up">
+          <div className="p-3 border-b border-white/5 bg-dark-2">
+            <div className="relative">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20" />
+              <input
+                autoFocus
+                type="text"
+                placeholder={t.searchCountry}
+                className="w-full bg-white/5 border border-white/10 pl-9 pr-3 py-2 text-[11px] outline-none focus:border-gold text-cream"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="max-h-64 overflow-y-auto custom-scrollbar bg-dark-2/90">
+            {filtered.length > 0 ? filtered.map((c) => (
+              <div
+                key={c.name + c.code}
+                onClick={() => { onSelect(c); setIsOpen(false); setSearch(""); }}
+                className="px-4 py-3 flex items-center justify-between hover:bg-gold hover:text-dark cursor-pointer transition-colors border-b border-white/5 last:border-0"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-lg">{c.flag}</span>
+                  <span className="text-xs font-medium uppercase tracking-wider">{c.name}</span>
                 </div>
-            )}
+                <span className="text-[10px] font-bold opacity-60 italic">{c.code}</span>
+              </div>
+            )) : <div className="p-4 text-center text-xs text-cream/20 italic">{t.noCountryFound}</div>}
+          </div>
         </div>
-    );
+      )}
+    </div>
+  );
 }
 
 function StepIcon({ number, active, completed }) {
-    return (
-        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-[11px] font-bold transition-all duration-700 ${
-            completed ? 'bg-gold text-dark' : 
-            active ? 'border-gold text-gold border-2 shadow-[0_0_20px_rgba(197,160,89,0.3)]' : 'border-white/10 text-white/20 border'
-        }`}>
-            {completed ? <Check size={18} /> : number}
-        </div>
-    );
+  return (
+    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-[11px] font-bold transition-all duration-700 ${
+      completed ? 'bg-gold text-dark' :
+      active ? 'border-gold text-gold border-2 shadow-[0_0_20px_rgba(197,160,89,0.3)]' : 'border-white/10 text-white/20 border'
+    }`}>
+      {completed ? <Check size={18} /> : number}
+    </div>
+  );
 }
 
-function FormInput({ label, type="text", icon, onChange }) {
-    return (
-        <div className="space-y-2">
-            <label className="text-[10px] uppercase tracking-[3px] text-gold/60 ml-1">{label}</label>
-            <div className="relative">
-                {icon && <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gold/40">{icon}</div>}
-                <input 
-                    type={type} 
-                    onChange={e => onChange(e.target.value)}
-                    className={`w-full bg-white/5 border border-white/10 ${icon ? 'pl-12' : 'px-4'} py-3 text-sm focus:border-gold outline-none text-cream transition-all`}
-                    placeholder={`Entrez votre ${label.toLowerCase()}`}
-                />
-            </div>
-        </div>
-    );
+function FormInput({ label, type = "text", icon, onChange, placeholder }) {
+  return (
+    <div className="space-y-2">
+      <label className="text-[10px] uppercase tracking-[3px] text-gold/60 ml-1">{label}</label>
+      <div className="relative">
+        {icon && <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gold/40">{icon}</div>}
+        <input
+          type={type}
+          onChange={e => onChange(e.target.value)}
+          className={`w-full bg-white/5 border border-white/10 ${icon ? 'pl-12' : 'px-4'} py-3 text-sm focus:border-gold outline-none text-cream transition-all`}
+          placeholder={placeholder}
+        />
+      </div>
+    </div>
+  );
 }
 
 function Counter({ label, value, onUpdate }) {
-    return (
-        <div className="space-y-2">
-            <label className="text-[10px] uppercase tracking-[3px] text-gold/60 ml-1">{label}</label>
-            <div className="flex items-center justify-between border border-white/10 bg-white/5 p-1 h-12 rounded-xs">
-                <button type="button" onClick={() => onUpdate(Math.max(0, value-1))} className="w-12 h-full flex items-center justify-center text-gold hover:bg-gold hover:text-dark transition-all text-xl">—</button>
-                <span className="font-bold text-sm text-white">{value}</span>
-                <button type="button" onClick={() => onUpdate(value+1)} className="w-12 h-full flex items-center justify-center text-gold hover:bg-gold hover:text-dark transition-all text-xl">+</button>
-            </div>
-        </div>
-    );
+  return (
+    <div className="space-y-2">
+      <label className="text-[10px] uppercase tracking-[3px] text-gold/60 ml-1">{label}</label>
+      <div className="flex items-center justify-between border border-white/10 bg-white/5 p-1 h-12 rounded-xs">
+        <button type="button" onClick={() => onUpdate(Math.max(0, value - 1))} className="w-12 h-full flex items-center justify-center text-gold hover:bg-gold hover:text-dark transition-all text-xl">—</button>
+        <span className="font-bold text-sm text-white">{value}</span>
+        <button type="button" onClick={() => onUpdate(value + 1)} className="w-12 h-full flex items-center justify-center text-gold hover:bg-gold hover:text-dark transition-all text-xl">+</button>
+      </div>
+    </div>
+  );
 }
 
 function JourneyStep({ label, value, icon, isLast }) {
-    return (
-        <div className="flex gap-4">
-            <div className="flex flex-col items-center">
-                <div className="w-8 h-8 rounded-full bg-gold/10 border border-gold/30 flex items-center justify-center text-gold">{icon}</div>
-                {!isLast && <div className="w-[1px] h-full bg-gradient-to-b from-gold/30 to-transparent my-1"></div>}
-            </div>
-            <div className="pb-4">
-                <p className="text-[9px] uppercase tracking-[4px] text-gold/40 mb-1">{label}</p>
-                <p className="text-[11px] font-medium text-cream leading-tight">{value}</p>
-            </div>
-        </div>
-    );
+  return (
+    <div className="flex gap-4">
+      <div className="flex flex-col items-center">
+        <div className="w-8 h-8 rounded-full bg-gold/10 border border-gold/30 flex items-center justify-center text-gold">{icon}</div>
+        {!isLast && <div className="w-[1px] h-full bg-gradient-to-b from-gold/30 to-transparent my-1"></div>}
+      </div>
+      <div className="pb-4">
+        <p className="text-[9px] uppercase tracking-[4px] text-gold/40 mb-1">{label}</p>
+        <p className="text-[11px] font-medium text-cream leading-tight">{value}</p>
+      </div>
+    </div>
+  );
 }

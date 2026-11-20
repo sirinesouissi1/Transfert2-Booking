@@ -4,10 +4,64 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { MapPin, Users, Calendar, ArrowRight, Check, Clock } from 'lucide-react';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
+import { useLanguage } from '../context/LanguageContext'; // <-- AJOUT
+
+// --- AJOUT DES TRADUCTIONS ---
+const translations = {
+  fr: {
+    loading: "Chargement des véhicules...",
+    title: "Sélectionnez votre",
+    titleEm: "véhicule",
+    step1: "Trajet",
+    step2: "Véhicule",
+    step3: "Confirmation",
+    departure: "Départ",
+    destination: "Destination",
+    returnLabel: "Retour",
+    passengers: "Passagers",
+    passengerWord: "personne(s)",
+    tripType: "Type de trajet",
+    oneWay: "Aller simple",
+    roundTrip: "Aller-retour",
+    notSpecified: "Non spécifiée",
+    seats: "places",
+    waitingIncluded: "Attente Incluse",
+    totalPrice: "Tarif tout inclus",
+    priceOnRequest: "Prix sur demande",
+    continueBtn: "Continuer"
+  },
+  en: {
+    loading: "Loading vehicles...",
+    title: "Select your",
+    titleEm: "vehicle",
+    step1: "Trip",
+    step2: "Vehicle",
+    step3: "Confirmation",
+    departure: "Departure",
+    destination: "Destination",
+    returnLabel: "Return",
+    passengers: "Passengers",
+    passengerWord: "person(s)",
+    tripType: "Trip Type",
+    oneWay: "One way",
+    roundTrip: "Round trip",
+    notSpecified: "Not specified",
+    seats: "seats",
+    waitingIncluded: "Waiting Included",
+    totalPrice: "All-inclusive price",
+    priceOnRequest: "Price on request",
+    continueBtn: "Continue"
+  }
+};
 
 export default function SelectVehicle() {
   const location = useLocation();
   const navigate = useNavigate();
+  
+  // --- RECUPERATION DE LA LANGUE ---
+  const { language } = useLanguage();
+  const t = translations[language];
+  const currentLocale = language === 'fr' ? 'fr-FR' : 'en-US'; // Pour le formatage des dates
 
   // Récupération des paramètres de l'URL (envoyés depuis Home.jsx)
   const params = new URLSearchParams(location.search);
@@ -59,7 +113,7 @@ export default function SelectVehicle() {
     const queryParams = new URLSearchParams({
       vehicleId: vehicle._id,
       vehicleName: vehicle.name,
-      price: vehicle.price ?? '', // si null, chaîne vide
+      price: vehicle.price ?? '', 
       image: vehicle.image,
       from: tripData.from,
       to: tripData.to,
@@ -76,16 +130,16 @@ export default function SelectVehicle() {
   if (loading) {
     return (
       <div className="bg-dark-DEFAULT min-h-screen flex items-center justify-center">
-        <div className="text-gold text-sm uppercase tracking-widest">Chargement des véhicules...</div>
+        <div className="text-gold text-sm uppercase tracking-widest">{t.loading}</div>
       </div>
     );
   }
 
   // Formatage de la date pour affichage
   const formatDate = (dateStr) => {
-    if (!dateStr) return 'Non spécifiée';
+    if (!dateStr) return t.notSpecified;
     const date = new Date(dateStr);
-    return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    return date.toLocaleDateString(currentLocale, { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
 
   return (
@@ -96,14 +150,14 @@ export default function SelectVehicle() {
         {/* Stepper */}
         <div className="flex flex-col items-center mb-12 animate-fade-in">
           <h1 className="font-serif text-4xl md:text-5xl mb-8 text-center tracking-tight">
-            Sélectionnez votre <em className="text-gold italic underline decoration-gold/30 underline-offset-8">véhicule</em>
+            {t.title} <em className="text-gold italic underline decoration-gold/30 underline-offset-8">{t.titleEm}</em>
           </h1>
           <div className="flex items-center justify-center w-full max-w-2xl px-4">
-            <Step number="1" label="Trajet" active={true} completed={true} />
+            <Step number="1" label={t.step1} active={true} completed={true} />
             <div className="flex-1 h-[1px] bg-gold/30 mx-4 md:mx-8"></div>
-            <Step number="2" label="Véhicule" active={true} />
+            <Step number="2" label={t.step2} active={true} />
             <div className="flex-1 h-[1px] bg-white/10 mx-4 md:mx-8"></div>
-            <Step number="3" label="Confirmation" active={false} />
+            <Step number="3" label={t.step3} active={false} />
           </div>
         </div>
 
@@ -113,7 +167,7 @@ export default function SelectVehicle() {
             <div className="flex items-start gap-4">
               <MapPin className="text-gold shrink-0" size={20} />
               <div>
-                <p className="text-[10px] uppercase tracking-widest text-cream/40">Départ</p>
+                <p className="text-[10px] uppercase tracking-widest text-cream/40">{t.departure}</p>
                 <p className="font-medium">{tripData.from}</p>
                 <p className="text-sm text-cream/60">{formatDate(tripData.date)}</p>
               </div>
@@ -121,25 +175,25 @@ export default function SelectVehicle() {
             <div className="flex items-start gap-4">
               <MapPin className="text-gold shrink-0" size={20} />
               <div>
-                <p className="text-[10px] uppercase tracking-widest text-cream/40">Destination</p>
+                <p className="text-[10px] uppercase tracking-widest text-cream/40">{t.destination}</p>
                 <p className="font-medium">{tripData.to}</p>
                 {tripData.tripType === 'round-trip' && tripData.returnDate && (
-                  <p className="text-sm text-cream/60">Retour : {formatDate(tripData.returnDate)}</p>
+                  <p className="text-sm text-cream/60">{t.returnLabel} : {formatDate(tripData.returnDate)}</p>
                 )}
               </div>
             </div>
             <div className="flex items-start gap-4">
               <Users className="text-gold shrink-0" size={20} />
               <div>
-                <p className="text-[10px] uppercase tracking-widest text-cream/40">Passagers</p>
-                <p className="font-medium">{tripData.passengers} personne(s)</p>
+                <p className="text-[10px] uppercase tracking-widest text-cream/40">{t.passengers}</p>
+                <p className="font-medium">{tripData.passengers} {t.passengerWord}</p>
               </div>
             </div>
             <div className="flex items-start gap-4">
               <Calendar className="text-gold shrink-0" size={20} />
               <div>
-                <p className="text-[10px] uppercase tracking-widest text-cream/40">Type de trajet</p>
-                <p className="font-medium">{tripData.tripType === 'round-trip' ? 'Aller-retour' : 'Aller simple'}</p>
+                <p className="text-[10px] uppercase tracking-widest text-cream/40">{t.tripType}</p>
+                <p className="font-medium">{tripData.tripType === 'round-trip' ? t.roundTrip : t.oneWay}</p>
               </div>
             </div>
           </div>
@@ -151,7 +205,7 @@ export default function SelectVehicle() {
             {vehicles.map((car) => (
               <div
                 key={car._id}
-                onClick={() => setSelectedId(car._id)}   // ← TOUJOURS sélectionnable
+                onClick={() => setSelectedId(car._id)}   
                 className={`group relative bg-dark-2/40 backdrop-blur-md border transition-all duration-500 p-8 flex flex-col cursor-pointer ${
                   selectedId === car._id
                     ? 'border-gold shadow-[0_0_40px_rgba(197,160,89,0.1)] translate-y-[-8px]'
@@ -176,16 +230,16 @@ export default function SelectVehicle() {
 
                 <div className="mt-auto space-y-6">
                   <div className="flex items-center justify-between text-xs text-cream/40 border-b border-white/5 pb-4">
-                    <span className="flex items-center gap-2"><Users size={14} className="text-gold"/> {car.capacity} places</span>
-                    <span className="flex items-center gap-2"><Clock size={14} className="text-gold"/> Attente Incluse</span>
+                    <span className="flex items-center gap-2"><Users size={14} className="text-gold"/> {car.capacity} {t.seats}</span>
+                    <span className="flex items-center gap-2"><Clock size={14} className="text-gold"/> {t.waitingIncluded}</span>
                   </div>
 
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-[10px] uppercase tracking-widest text-cream/40 mb-1">Tarif tout inclus</p>
+                      <p className="text-[10px] uppercase tracking-widest text-cream/40 mb-1">{t.totalPrice}</p>
                       {car.price
                         ? <p className="text-3xl font-serif text-gold">{car.price} €</p>
-                        : <p className="text-sm text-muted italic">Prix sur demande</p>
+                        : <p className="text-sm text-muted italic">{t.priceOnRequest}</p>
                       }
                     </div>
                     <span className={`text-[10px] border px-2 py-1 rounded uppercase tracking-wider ${
@@ -193,7 +247,7 @@ export default function SelectVehicle() {
                         ? 'text-purple-400 border-purple-400/30 bg-purple-400/5'
                         : 'text-blue-400 border-blue-400/30 bg-blue-400/5'
                     }`}>
-                      {tripData.tripType === 'round-trip' ? 'Aller-retour' : 'Aller simple'}
+                      {tripData.tripType === 'round-trip' ? t.roundTrip : t.oneWay}
                     </span>
                   </div>
                 </div>
@@ -213,7 +267,7 @@ export default function SelectVehicle() {
               }`}
             >
               <span className="relative z-10 flex items-center gap-3">
-                Continuer <ArrowRight size={18} />
+                {t.continueBtn} <ArrowRight size={18} />
               </span>
               {selectedId && (
                 <div className="absolute inset-0 bg-white translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>

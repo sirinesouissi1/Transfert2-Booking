@@ -152,20 +152,19 @@ export default function Excursions() {
                       <span className="text-muted ml-1">({exc.numReviews} avis)</span>
                     </div>
                   )}
-                  <div className="flex items-center justify-between border-t border-gold/10 pt-4">
-                    <div>
-                      <span className="font-serif text-2xl font-light text-gold">
-                        {getIndicativePrice(exc)}
-                      </span>
-                      <span className="text-muted text-xs ml-1">€/groupe (4 pers.)</span>
-                    </div>
-                    <Link
-                      to={`/excursions/${exc._id}`}
-                      className="border border-gold/30 text-gold text-[9px] tracking-[2px] uppercase px-4 py-2 hover:bg-gold hover:text-dark-DEFAULT transition-all"
-                    >
-                      Voir
-                    </Link>
-                  </div>
+<div className="flex items-center justify-between border-t border-gold/10 pt-4">
+  <div>
+    <span className="text-muted text-xs italic font-light">
+      Tarif selon le groupe
+    </span>
+  </div>
+  <Link
+    to={`/excursions/${exc._id}`}
+    className="border border-gold/30 text-gold text-[9px] tracking-[2px] uppercase px-4 py-2 hover:bg-gold hover:text-dark-DEFAULT transition-all"
+  >
+    Voir
+  </Link>
+</div>
                 </div>
               </div>
             ))}
