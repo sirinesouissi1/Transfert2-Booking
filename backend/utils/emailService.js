@@ -260,7 +260,7 @@ const getBaseTemplate = (content, title = '', t = L.fr) => `
       ${content}
     </div>
     <div style="${baseStyles.footer}">
-      <p>📞 +216 71 000 000 | ✉️ contact@gotaxi.tn</p>
+      <p>📞 +216 53 078 293 | ✉️ gotaxitunisie0@gmail.com</p>
       <p>© ${new Date().getFullYear()} GoTaxi – ${t.footerRights}</p>
     </div>
   </div>

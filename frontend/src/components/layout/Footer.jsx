@@ -57,11 +57,11 @@ export default function Footer() {
             <ul className="space-y-4">
               <li className="text-sm text-muted font-light">
                 <span className="text-gold block text-[10px] tracking-[2px] uppercase mb-1">Email</span>
-                contact@GoTaxi-tunisia.com
+                gotaxitunisie0@gmail.com
               </li>
               <li className="text-sm text-muted font-light">
                 <span className="text-gold block text-[10px] tracking-[2px] uppercase mb-1">WhatsApp</span>
-                +216 XX XXX XXX
+                +216 53 078 293
               </li>
               <li className="text-sm text-muted font-light">
                 <span className="text-gold block text-[10px] tracking-[2px] uppercase mb-1">Disponibilité</span>
