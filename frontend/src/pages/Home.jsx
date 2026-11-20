@@ -379,11 +379,11 @@ function ContactSection({ t }) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-8 border-t border-white/5">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-gold/10 flex items-center justify-center rounded-full text-gold"><Phone size={20}/></div>
-              <div><p className="text-[10px] uppercase text-gold">{t.callUs}</p><p className="text-sm">+216 71 000 000</p></div>
+              <div><p className="text-[10px] uppercase text-gold">{t.callUs}</p><p className="text-sm">+216 53 078 293</p></div>
             </div>
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-gold/10 flex items-center justify-center rounded-full text-gold"><Mail size={20}/></div>
-              <div><p className="text-[10px] uppercase text-gold">{t.emailUs}</p><p className="text-sm">contact@ GoTaxi.tn</p></div>
+              <div><p className="text-[10px] uppercase text-gold">{t.emailUs}</p><p className="text-sm">gotaxitunisie0@gmail.com</p></div>
             </div>
           </div>
         </div>
