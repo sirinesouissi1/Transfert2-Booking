@@ -104,6 +104,8 @@ export default function SelectVehicle() {
       vehicleName: vehicle.name,
       price: vehicle.price ?? '',
       image: vehicle.image || '',
+      // ✅ INDISPENSABLE : capacité du véhicule pour brider les compteurs côté formulaire
+      capacity: vehicle.capacity ?? '',
       from: tripData.from,
       to: tripData.to,
       departureDate: tripData.date,

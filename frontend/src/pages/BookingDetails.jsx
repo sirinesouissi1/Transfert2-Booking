@@ -7,95 +7,10 @@ import {
 import toast from 'react-hot-toast';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
-import { useLanguage } from '../context/LanguageContext'; // <-- AJOUT
-// ⚠️ Assurez-vous que ALL_COUNTRIES est importé quelque part :
-// import { ALL_COUNTRIES } from '../data/countries';
+import { useLanguage } from '../context/LanguageContext';
 
-const API_URL = (import.meta.env.VITE_API_URL || 'https://go-taxi-api.onrender.com/api').replace(/\/$/, '');
-
-// --- AJOUT DES TRADUCTIONS ---
-const translations = {
-  fr: {
-    title: "Finalisez votre",
-    titleEm: "réservation",
-    personalInfo: "Informations Personnelles",
-    firstName: "Prénom",
-    lastName: "Nom",
-    email: "Email",
-    phone: "Numéro de téléphone",
-    flightNumber: "Numéro de Vol",
-    adults: "Adultes",
-    children: "Enfants",
-    requests: "Demandes particulières",
-    requestsPlaceholder: "Ex: Siège bébé requis, besoin d'aide pour bagages...",
-    submitting: "Envoi en cours...",
-    confirmBooking: "Confirmer la réservation",
-    tripDetails: "Détails du Trajet",
-    payToDriver: "Paiement au chauffeur",
-    totalPrice: "Prix Total",
-    priceOnRequest: "Sur demande",
-    departure: "Départ",
-    destination: "Destination",
-    placeholderFirstName: "Entrez votre prénom",
-    placeholderLastName: "Entrez votre nom",
-    placeholderEmail: "Entrez votre email",
-    placeholderFlight: "Entrez votre numéro de vol",
-    searchCountry: "Rechercher un pays...",
-    noCountryFound: "Aucun pays trouvé",
-    // Messages d'erreur
-    errFirstName: "Prénom",
-    errLastName: "Nom",
-    errEmail: "Email",
-    errPhone: "Téléphone",
-    errFieldsRequired: "Veuillez remplir les champs suivants",
-    errPhoneLength: "Le numéro doit contenir {expected} chiffre{s} pour {country} ({code}). Actuellement : {current}.",
-    errPhoneGeneric: "Le numéro doit contenir entre 6 et 15 chiffres.",
-    errInvalidDate: "Date de départ invalide. Veuillez recommencer la recherche.",
-    errMissingVehicle: "Véhicule manquant. Veuillez recommencer la recherche.",
-    errBooking: "Erreur lors de la réservation",
-    errServer: "Impossible de contacter le serveur",
-  },
-  en: {
-    title: "Complete your",
-    titleEm: "booking",
-    personalInfo: "Personal Information",
-    firstName: "First name",
-    lastName: "Last name",
-    email: "Email",
-    phone: "Phone number",
-    flightNumber: "Flight number",
-    adults: "Adults",
-    children: "Children",
-    requests: "Special requests",
-    requestsPlaceholder: "E.g.: Baby seat required, help with luggage...",
-    submitting: "Submitting...",
-    confirmBooking: "Confirm booking",
-    tripDetails: "Trip Details",
-    payToDriver: "Payment to driver",
-    totalPrice: "Total Price",
-    priceOnRequest: "On request",
-    departure: "Departure",
-    destination: "Destination",
-    placeholderFirstName: "Enter your first name",
-    placeholderLastName: "Enter your last name",
-    placeholderEmail: "Enter your email",
-    placeholderFlight: "Enter your flight number",
-    searchCountry: "Search for a country...",
-    noCountryFound: "No country found",
-    // Error messages
-    errFirstName: "First name",
-    errLastName: "Last name",
-    errEmail: "Email",
-    errPhone: "Phone",
-    errFieldsRequired: "Please fill in the following fields",
-    errPhoneLength: "The number must contain {expected} digit{s} for {country} ({code}). Currently: {current}.",
-    errPhoneGeneric: "The number must contain between 6 and 15 digits.",
-    errInvalidDate: "Invalid departure date. Please restart your search.",
-    errMissingVehicle: "Missing vehicle. Please restart your search.",
-    errBooking: "Error during booking",
-    errServer: "Unable to reach the server",
-  }
-};
+// ⚠️ Si ALL_COUNTRIES est dans un autre fichier, adapte le chemin.
+// Ici on le déclare localement pour que le fichier soit autonome.
 const ALL_COUNTRIES = [
     { name: "Afghanistan", code: "+93", flag: "🇦🇫" },
     { name: "Afrique du Sud", code: "+27", flag: "🇿🇦" },
@@ -342,6 +257,103 @@ const ALL_COUNTRIES = [
     { name: "Zambie", code: "+260", flag: "🇿🇲" },
     { name: "Zimbabwe", code: "+263", flag: "🇿🇼" }
 ].sort((a, b) => a.name.localeCompare(b.name));
+
+const API_URL = (import.meta.env.VITE_API_URL || 'https://go-taxi-api.onrender.com/api').replace(/\/$/, '');
+
+// --- TRADUCTIONS ---
+const translations = {
+  fr: {
+    title: "Finalisez votre",
+    titleEm: "réservation",
+    personalInfo: "Informations Personnelles",
+    firstName: "Prénom",
+    lastName: "Nom",
+    email: "Email",
+    phone: "Numéro de téléphone",
+    flightNumber: "Numéro de Vol",
+    adults: "Adultes",
+    children: "Enfants",
+    requests: "Demandes particulières",
+    requestsPlaceholder: "Ex: Siège bébé requis, besoin d'aide pour bagages...",
+    submitting: "Envoi en cours...",
+    confirmBooking: "Envoyer la demande",
+    tripDetails: "Détails du Trajet",
+    payToDriver: "Paiement au chauffeur",
+    totalPrice: "Prix Total",
+    priceOnRequest: "Sur demande",
+    departure: "Départ",
+    destination: "Destination",
+    placeholderFirstName: "Entrez votre prénom",
+    placeholderLastName: "Entrez votre nom",
+    placeholderEmail: "Entrez votre email",
+    placeholderFlight: "Entrez votre numéro de vol",
+    searchCountry: "Rechercher un pays...",
+    noCountryFound: "Aucun pays trouvé",
+    // ✅ Ajout capacité
+    passengersLabel: "Passagers",
+    maxCapacityReached: "Capacité maximale atteinte",
+    maxCapacityInfo: "Ce véhicule peut accueillir jusqu'à {max} passager(s).",
+    // Messages d'erreur
+    errFirstName: "Prénom",
+    errLastName: "Nom",
+    errEmail: "Email",
+    errPhone: "Téléphone",
+    errFieldsRequired: "Veuillez remplir les champs suivants",
+    errPhoneLength: "Le numéro doit contenir {expected} chiffre{s} pour {country} ({code}). Actuellement : {current}.",
+    errPhoneGeneric: "Le numéro doit contenir entre 6 et 15 chiffres.",
+    errInvalidDate: "Date de départ invalide. Veuillez recommencer la recherche.",
+    errMissingVehicle: "Véhicule manquant. Veuillez recommencer la recherche.",
+    errCapacity: "Capacité maximale du véhicule dépassée ({max} passagers max).",
+    errBooking: "Erreur lors de la réservation",
+    errServer: "Impossible de contacter le serveur",
+  },
+  en: {
+    title: "Complete your",
+    titleEm: "booking",
+    personalInfo: "Personal Information",
+    firstName: "First name",
+    lastName: "Last name",
+    email: "Email",
+    phone: "Phone number",
+    flightNumber: "Flight number",
+    adults: "Adults",
+    children: "Children",
+    requests: "Special requests",
+    requestsPlaceholder: "E.g.: Baby seat required, help with luggage...",
+    submitting: "Submitting...",
+    confirmBooking: "Confirm booking",
+    tripDetails: "Trip Details",
+    payToDriver: "Payment to driver",
+    totalPrice: "Total Price",
+    priceOnRequest: "On request",
+    departure: "Departure",
+    destination: "Destination",
+    placeholderFirstName: "Enter your first name",
+    placeholderLastName: "Enter your last name",
+    placeholderEmail: "Enter your email",
+    placeholderFlight: "Enter your flight number",
+    searchCountry: "Search for a country...",
+    noCountryFound: "No country found",
+    // ✅ Ajout capacité
+    passengersLabel: "Passengers",
+    maxCapacityReached: "Max capacity reached",
+    maxCapacityInfo: "This vehicle can hold up to {max} passenger(s).",
+    // Error messages
+    errFirstName: "First name",
+    errLastName: "Last name",
+    errEmail: "Email",
+    errPhone: "Phone",
+    errFieldsRequired: "Please fill in the following fields",
+    errPhoneLength: "The number must contain {expected} digit{s} for {country} ({code}). Currently: {current}.",
+    errPhoneGeneric: "The number must contain between 6 and 15 digits.",
+    errInvalidDate: "Invalid departure date. Please restart your search.",
+    errMissingVehicle: "Missing vehicle. Please restart your search.",
+    errCapacity: "Vehicle max capacity exceeded ({max} passengers max).",
+    errBooking: "Error during booking",
+    errServer: "Unable to reach the server",
+  }
+};
+
 // Longueur attendue du numéro local (sans le préfixe pays) par code pays.
 const PHONE_LENGTHS = {
   '+216': 8, '+33': 9, '+32': 9, '+41': 9, '+49': [10, 11],
@@ -364,7 +376,6 @@ export default function BookingDetails() {
   const navigate = useNavigate();
   const params = new URLSearchParams(location.search);
 
-  // --- RECUPERATION DE LA LANGUE ---
   const { language } = useLanguage();
   const t = translations[language];
 
@@ -396,6 +407,7 @@ export default function BookingDetails() {
     return '';
   };
 
+  // ✅ bookingData inclut maintenant `capacity`
   const bookingData = useMemo(() => ({
     vehicleId: params.get('vehicleId') || '',
     vehicleName: params.get('vehicleName') || 'Berline Affaires',
@@ -406,17 +418,25 @@ export default function BookingDetails() {
     departureDate: params.get('departureDate') || '',
     returnDate: params.get('returnDate') || '',
     tripType: params.get('tripType') || 'one-way',
-    passengers: params.get('passengers') || '1'
+    passengers: params.get('passengers') || '1',
+    capacity: parseInt(params.get('capacity') || '0', 10) || 0,
   }), [params]);
 
   const [formData, setFormData] = useState({
     prenom: '', nom: '', email: '', phone: '',
     prefix: ALL_COUNTRIES.find(c => c.name === "Tunisie") || ALL_COUNTRIES[0],
-    flightNumber: '', adults: parseInt(bookingData.passengers),
-    children: 0, requests: '', whatsapp: true
+    flightNumber: '',
+    adults: Math.max(1, parseInt(bookingData.passengers) || 1),
+    children: 0,
+    requests: '', whatsapp: true
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // ✅ Capacité max. Si pas d'info → 99 (pas de limite côté front, le backend tranchera)
+  const maxCapacity = bookingData.capacity > 0 ? bookingData.capacity : 99;
+  const totalPassengers = formData.adults + formData.children;
+  const capacityReached = totalPassengers >= maxCapacity;
 
   const validateForm = () => {
     const errors = [];
@@ -430,6 +450,10 @@ export default function BookingDetails() {
         setPhoneError(phoneErr);
         errors.push(`${t.errPhone} (${phoneErr})`);
       }
+    }
+    // ✅ Vérif capacité au submit
+    if (totalPassengers > maxCapacity) {
+      errors.push(t.errCapacity.replace('{max}', maxCapacity));
     }
     return errors;
   };
@@ -492,6 +516,7 @@ export default function BookingDetails() {
         passengers: { adults: formData.adults, children: formData.children },
         flightNumber: formData.flightNumber,
         specialRequests: formData.requests,
+        language,
       };
 
       const response = await fetch(`${API_URL}/bookings`, {
@@ -589,9 +614,52 @@ export default function BookingDetails() {
                   <FormInput label={t.flightNumber} placeholder={t.placeholderFlight} icon={<Plane size={16}/>} onChange={v => setFormData({...formData, flightNumber: v})} />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
-                  <Counter label={t.adults} value={formData.adults} onUpdate={v => setFormData({...formData, adults: v})} />
-                  <Counter label={t.children} value={formData.children} onUpdate={v => setFormData({...formData, children: v})} />
+                {/* ✅ Compteurs bridés par la capacité */}
+                <div className="pt-4 space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <Counter
+                      label={t.adults}
+                      value={formData.adults}
+                      min={1}
+                      max={Math.max(1, maxCapacity - formData.children)}
+                      onUpdate={(v) => {
+                        const max = Math.max(1, maxCapacity - formData.children);
+                        setFormData({ ...formData, adults: Math.min(Math.max(1, v), max) });
+                      }}
+                    />
+                    <Counter
+                      label={t.children}
+                      value={formData.children}
+                      min={0}
+                      max={Math.max(0, maxCapacity - formData.adults)}
+                      onUpdate={(v) => {
+                        const max = Math.max(0, maxCapacity - formData.adults);
+                        setFormData({ ...formData, children: Math.min(Math.max(0, v), max) });
+                      }}
+                    />
+                  </div>
+
+                  {/* ✅ Indicateur de capacité */}
+                  <div className="flex items-center justify-between text-xs px-1 flex-wrap gap-2">
+                    <span className="text-muted">
+                      {t.passengersLabel} :{' '}
+                      <span className={capacityReached ? 'text-red-400 font-bold' : 'text-gold font-bold'}>
+                        {totalPassengers}
+                      </span>
+                      {' / '}
+                      {maxCapacity < 99 ? maxCapacity : '∞'}
+                    </span>
+                    {capacityReached && (
+                      <span className="text-red-400 flex items-center gap-1">
+                        ⚠️ {t.maxCapacityReached}
+                      </span>
+                    )}
+                  </div>
+                  {maxCapacity < 99 && !capacityReached && (
+                    <p className="text-[10px] text-cream/40 italic px-1">
+                      {t.maxCapacityInfo.replace('{max}', maxCapacity)}
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -628,6 +696,11 @@ export default function BookingDetails() {
                 <img src={bookingData.image} alt="car" className="w-40 mx-auto mb-4 drop-shadow-[0_20px_20px_rgba(0,0,0,0.5)]" />
                 <p className="font-serif text-xl text-white">{bookingData.vehicleName}</p>
                 <span className="inline-block text-[9px] uppercase tracking-[3px] text-orange-400 mt-2">{t.payToDriver}</span>
+                {maxCapacity < 99 && (
+                  <p className="text-[10px] text-cream/50 mt-2">
+                    {t.passengersLabel} max : {maxCapacity}
+                  </p>
+                )}
               </div>
 
               <div className="bg-gold text-dark p-4 flex justify-between items-center font-bold mb-8">
@@ -744,14 +817,36 @@ function FormInput({ label, type = "text", icon, onChange, placeholder }) {
   );
 }
 
-function Counter({ label, value, onUpdate }) {
+// ✅ Counter accepte désormais min et max, avec boutons désactivés visuellement
+function Counter({ label, value, onUpdate, min = 0, max = Infinity }) {
+  const canDec = value > min;
+  const canInc = value < max;
+
   return (
     <div className="space-y-2">
       <label className="text-[10px] uppercase tracking-[3px] text-gold/60 ml-1">{label}</label>
       <div className="flex items-center justify-between border border-white/10 bg-white/5 p-1 h-12 rounded-xs">
-        <button type="button" onClick={() => onUpdate(Math.max(0, value - 1))} className="w-12 h-full flex items-center justify-center text-gold hover:bg-gold hover:text-dark transition-all text-xl">—</button>
+        <button
+          type="button"
+          onClick={() => canDec && onUpdate(value - 1)}
+          disabled={!canDec}
+          className={`w-12 h-full flex items-center justify-center text-xl transition-all ${
+            canDec ? 'text-gold hover:bg-gold hover:text-dark' : 'text-white/15 cursor-not-allowed'
+          }`}
+        >
+          —
+        </button>
         <span className="font-bold text-sm text-white">{value}</span>
-        <button type="button" onClick={() => onUpdate(value + 1)} className="w-12 h-full flex items-center justify-center text-gold hover:bg-gold hover:text-dark transition-all text-xl">+</button>
+        <button
+          type="button"
+          onClick={() => canInc && onUpdate(value + 1)}
+          disabled={!canInc}
+          className={`w-12 h-full flex items-center justify-center text-xl transition-all ${
+            canInc ? 'text-gold hover:bg-gold hover:text-dark' : 'text-white/15 cursor-not-allowed'
+          }`}
+        >
+          +
+        </button>
       </div>
     </div>
   );

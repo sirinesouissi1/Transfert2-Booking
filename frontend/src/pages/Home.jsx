@@ -12,6 +12,13 @@ import Footer from '../components/layout/Footer';
 import { useLanguage } from '../context/LanguageContext';
 import { contactAPI } from '../services/api'; // <-- AJOUT DE L'API
 
+// ✅ Génère les créneaux horaires toutes les 15 minutes (00:00 → 23:45)
+const TIME_SLOTS = Array.from({ length: 24 * 4 }, (_, i) => {
+  const h = Math.floor(i / 4);
+  const m = (i % 4) * 15;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+});
+
 // Translations
 const translations = {
   fr: {
@@ -400,10 +407,26 @@ function Hero({ t, language }) {
   const [formData, setFormData] = useState({ 
     from: '', 
     to: '', 
-    departDate: '', 
-    returnDate: '', 
+    departDate: '',   // YYYY-MM-DD
+    departTime: '',   // HH:mm
+    returnDate: '',   // YYYY-MM-DD
+    returnTime: '',   // HH:mm
     passengers: 1
   });
+
+  // ✅ AJOUT : date minimale (aujourd'hui) pour bloquer les dates passées
+  const now = new Date();
+  const minDateTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+    .toISOString()
+    .slice(0, 16);
+  const todayStr = minDateTime.slice(0, 10); // YYYY-MM-DD
+
+  // ✅ AJOUT : filtre les créneaux si la date choisie est aujourd'hui (retire les heures passées)
+  const getAvailableSlots = (selectedDate) => {
+    if (selectedDate !== todayStr) return TIME_SLOTS;
+    const nowHHmm = minDateTime.slice(11, 16); // HH:mm actuel
+    return TIME_SLOTS.filter((slot) => slot > nowHHmm);
+  };
 
   // MAJOR CITIES IN TUNISIA (simplified)
   const LOCATIONS = [
@@ -480,17 +503,25 @@ function Hero({ t, language }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
+
+    // ✅ Reconstruire les datetime-local (YYYY-MM-DDTHH:mm) pour l'URL
+    const departDateTime = formData.departDate && formData.departTime
+      ? `${formData.departDate}T${formData.departTime}`
+      : '';
+    const returnDateTime = formData.returnDate && formData.returnTime
+      ? `${formData.returnDate}T${formData.returnTime}`
+      : '';
+
     const params = new URLSearchParams({
       from: formData.from,
       to: formData.to,
-      departDate: formData.departDate,
+      departDate: departDateTime,
       tripType: tripType,
       passengers: formData.passengers.toString()
     });
 
-    if (tripType === 'round-trip' && formData.returnDate) {
-      params.append('returnDate', formData.returnDate);
+    if (tripType === 'round-trip' && returnDateTime) {
+      params.append('returnDate', returnDateTime);
     }
 
     navigate(`/transferts/vehicules?${params.toString()}`);
@@ -510,17 +541,19 @@ function Hero({ t, language }) {
 
       <div className="relative z-20 max-w-7xl mx-auto px-6 w-full">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
-          <div className="lg:col-span-7 space-y-8 animate-fade-up">
+          <div className="lg:col-span-7 space-y-4 sm:space-y-8 animate-fade-up">
             <div className="inline-flex items-center gap-3 px-4 py-2 border border-gold/30 bg-gold/5 backdrop-blur-sm">
               <span className="w-8 h-[1px] bg-gold"></span>
               <span className="text-gold text-[10px] uppercase tracking-[4px] font-bold">Service Premium 24/7</span>
             </div>
-            <h1 className="font-serif text-6xl md:text-8xl text-cream leading-[0.9]">
+            {/* ✅ Titre réduit sur mobile (text-3xl) et progressif jusqu'à text-8xl sur desktop */}
+            <h1 className="font-serif text-3xl sm:text-5xl md:text-6xl lg:text-8xl text-cream leading-[0.95]">
               {t.heroTitle} <br />
               <em className="text-gold italic">{t.heroTitleEm}</em> <br />
               {t.heroTitleEnd}
             </h1>
-            <p className="text-cream/70 text-lg md:text-xl font-light max-w-xl leading-relaxed">
+            {/* ✅ Paragraphe réduit sur mobile pour laisser de la place au formulaire */}
+            <p className="text-cream/70 text-sm sm:text-base md:text-lg lg:text-xl font-light max-w-xl leading-relaxed">
               {t.heroDescription}
             </p>
           </div>
@@ -574,23 +607,53 @@ function Hero({ t, language }) {
                 />
                 
                 <div className={`grid ${tripType === 'round-trip' ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
+                  {/* --- DATE + HEURE DE DÉPART --- */}
                   <div className="space-y-1">
                     <label className="text-[10px] uppercase tracking-widest text-gold/60 ml-1">{t.departDate}</label>
-                    <input 
-                      type="datetime-local" 
-                      className="w-full bg-white/5 border border-white/10 px-4 py-3 text-sm focus:border-gold outline-none text-cream"
-                      onChange={(e) => setFormData({...formData, departDate: e.target.value})}
-                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <input 
+                        type="date" 
+                        min={todayStr}
+                        value={formData.departDate}
+                        className="w-full bg-white/5 border border-white/10 px-3 py-3 text-sm focus:border-gold outline-none text-cream"
+                        onChange={(e) => setFormData({...formData, departDate: e.target.value, departTime: ''})}
+                      />
+                      <select
+                        value={formData.departTime}
+                        className="w-full bg-white/5 border border-white/10 px-3 py-3 text-sm focus:border-gold outline-none text-cream"
+                        onChange={(e) => setFormData({...formData, departTime: e.target.value})}
+                      >
+                        <option value="" className="bg-dark-2">--:--</option>
+                        {getAvailableSlots(formData.departDate).map((slot) => (
+                          <option key={slot} value={slot} className="bg-dark-2">{slot}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
 
+                  {/* --- DATE + HEURE DE RETOUR --- */}
                   {tripType === 'round-trip' && (
                     <div className="space-y-1 animate-fade-in">
                       <label className="text-[10px] uppercase tracking-widest text-gold/60 ml-1">{t.returnDate}</label>
-                      <input 
-                        type="datetime-local" 
-                        className="w-full bg-white/5 border border-white/10 px-4 py-3 text-sm focus:border-gold outline-none text-cream"
-                        onChange={(e) => setFormData({...formData, returnDate: e.target.value})}
-                      />
+                      <div className="grid grid-cols-2 gap-2">
+                        <input 
+                          type="date" 
+                          min={formData.departDate || todayStr}
+                          value={formData.returnDate}
+                          className="w-full bg-white/5 border border-white/10 px-3 py-3 text-sm focus:border-gold outline-none text-cream"
+                          onChange={(e) => setFormData({...formData, returnDate: e.target.value, returnTime: ''})}
+                        />
+                        <select
+                          value={formData.returnTime}
+                          className="w-full bg-white/5 border border-white/10 px-3 py-3 text-sm focus:border-gold outline-none text-cream"
+                          onChange={(e) => setFormData({...formData, returnTime: e.target.value})}
+                        >
+                          <option value="" className="bg-dark-2">--:--</option>
+                          {getAvailableSlots(formData.returnDate).map((slot) => (
+                            <option key={slot} value={slot} className="bg-dark-2">{slot}</option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                   )}
                 </div>

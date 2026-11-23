@@ -94,6 +94,81 @@ const formatPrice = (value) => {
   return <span>{value} €</span>;
 };
 
+// ------------------------------------------------------------------
+// Prix par groupe selon la ville de départ
+// ------------------------------------------------------------------
+const DEPARTURE_CITIES = ['Tunis', 'Sousse', 'Hammamet'];
+const GROUP_SIZES = ['4', '6', '8'];
+
+const emptyDeparturePrices = () =>
+  Object.fromEntries(
+    DEPARTURE_CITIES.map((c) => [c, Object.fromEntries(GROUP_SIZES.map((s) => [s, '']))])
+  );
+
+// Remplit toutes les cases (ville × taille) à partir de ce que renvoie l'API
+const normalizeDeparturePrices = (dp) => {
+  const base = emptyDeparturePrices();
+  DEPARTURE_CITIES.forEach((city) => {
+    GROUP_SIZES.forEach((size) => {
+      const v = dp?.[city]?.[size];
+      if (v !== undefined && v !== null) base[city][size] = v;
+    });
+  });
+  return base;
+};
+
+// Enlève les cases vides avant l'envoi
+const cleanDeparturePrices = (dp = {}) => {
+  const out = {};
+  Object.entries(dp).forEach(([city, prices]) => {
+    const cleaned = {};
+    Object.entries(prices || {}).forEach(([size, price]) => {
+      if (price !== '' && price != null && Number(price) > 0) cleaned[size] = Number(price);
+    });
+    if (Object.keys(cleaned).length) out[city] = cleaned;
+  });
+  return out;
+};
+
+function DeparturePricesFields({ value, onChange }) {
+  const setPrice = (city, size, v) =>
+    onChange({ ...value, [city]: { ...value[city], [size]: v } });
+
+  return (
+    <div>
+      <label className="block text-[10px] uppercase tracking-wider text-muted mb-1">
+        Prix du groupe selon la ville de départ (€)
+      </label>
+      <div className="bg-[#35354A] border border-white/10 rounded overflow-hidden">
+        <div className="grid grid-cols-4 bg-white/5 text-[11px] uppercase tracking-wider text-muted">
+          <div className="px-3 py-2">Départ</div>
+          {GROUP_SIZES.map((s) => (
+            <div key={s} className="px-3 py-2 text-center">{s} pers.</div>
+          ))}
+        </div>
+        {DEPARTURE_CITIES.map((city) => (
+          <div key={city} className="grid grid-cols-4 items-center border-t border-white/5">
+            <div className="px-3 py-2 text-sm text-gold">{city}</div>
+            {GROUP_SIZES.map((size) => (
+              <div key={size} className="px-2 py-1.5">
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="€"
+                  value={value?.[city]?.[size] ?? ''}
+                  onChange={(e) => setPrice(city, size, e.target.value)}
+                  className="w-full bg-[#2A2A3C] border border-white/10 rounded px-2 py-1 text-sm text-cream text-center focus:outline-none focus:border-gold/40"
+                />
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+      <p className="text-muted text-[10px] mt-1">Laisser vide = pas de tarif pour cette combinaison.</p>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const { toasts, toast } = useToasts();
   return (
@@ -1877,6 +1952,7 @@ function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin, vehic
   const [includesStr, setIncludesStr] = useState((item?.includes || []).join('\n'));
   const [excludesStr, setExcludesStr] = useState((item?.excludes || []).join('\n'));
   const [itineraryArr, setItineraryArr] = useState(item?.itinerary || [{ time: '', title: '', description: '' }]);
+  const [departurePrices, setDeparturePrices] = useState(() => normalizeDeparturePrices(item?.departurePrices));
 
   if (!item) return null;
 
@@ -1909,6 +1985,7 @@ function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin, vehic
       payload.includes = includesStr.split('\n').map((s) => s.trim()).filter(Boolean);
       payload.excludes = excludesStr.split('\n').map((s) => s.trim()).filter(Boolean);
       payload.itinerary = itineraryArr.filter((i) => i.time || i.title || i.description);
+      payload.departurePrices = cleanDeparturePrices(departurePrices);
     }
 
     if ((resource === 'vehicle' || resource === 'excursion') && imageFile) {
@@ -1967,6 +2044,36 @@ function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin, vehic
                 <span className="text-gold font-medium">{item.pricePerPerson} €</span>
               </DetailRow>
             </DetailSection>
+
+            {item.departurePrices && Object.keys(item.departurePrices).length > 0 && (
+              <DetailSection title="Prix par groupe" icon={<FiDollarSign />}>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-muted text-xs">
+                        <th className="px-4 py-2 text-left font-medium">Départ</th>
+                        {GROUP_SIZES.map((s) => (
+                          <th key={s} className="px-4 py-2 text-center font-medium">{s} pers.</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {DEPARTURE_CITIES.filter((c) => item.departurePrices[c]).map((city) => (
+                        <tr key={city} className="border-t border-white/5">
+                          <td className="px-4 py-2 text-gold">{city}</td>
+                          {GROUP_SIZES.map((s) => (
+                            <td key={s} className="px-4 py-2 text-center text-cream">
+                              {item.departurePrices[city][s] ? `${item.departurePrices[city][s]} €` : '-'}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </DetailSection>
+            )}
+
             <DetailSection title="Description" icon={<FiTag />}>
               <p className="px-4 py-3 text-sm text-cream/90 leading-relaxed">{item.description || '-'}</p>
             </DetailSection>
@@ -2259,6 +2366,10 @@ function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin, vehic
           </div>
 
           <div className="mt-4">
+            <DeparturePricesFields value={departurePrices} onChange={setDeparturePrices} />
+          </div>
+
+          <div className="mt-4">
             <label className="block text-sm text-muted mb-1">Programme de la journée</label>
             {itineraryArr.map((step, index) => (
               <div key={index} className="flex gap-2 mb-2 items-start bg-[#35354A] p-2 rounded border border-white/10">
@@ -2408,11 +2519,7 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
           includes: '',
           excludes: '',
           itinerary: [{ time: '', title: '', description: '' }],
-          departurePrices: {
-            Hammamet: { '4': '', '6': '', '8': '' },
-            Sousse: { '4': '', '6': '', '8': '' },
-            Tunis: { '4': '', '6': '', '8': '' },
-          },
+          departurePrices: emptyDeparturePrices(),
         }
   );
   const [imageFile, setImageFile] = useState(null);
@@ -2431,6 +2538,18 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
       itinerary: prev.itinerary.map((s, i) => (i === index ? { ...s, [field]: value } : s)),
     }));
   };
+
+  const addStep = () =>
+    setForm((prev) => ({
+      ...prev,
+      itinerary: [...prev.itinerary, { time: '', title: '', description: '' }],
+    }));
+
+  const removeStep = (index) =>
+    setForm((prev) => ({
+      ...prev,
+      itinerary: prev.itinerary.filter((_, i) => i !== index),
+    }));
 
   const handleImageChange = (e) => {
     const file = e.target.files?.[0];
@@ -2504,16 +2623,7 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
         fd.append('includes', JSON.stringify(includesArray));
         fd.append('excludes', JSON.stringify(excludesArray));
         fd.append('itinerary', JSON.stringify(itineraryArray));
-
-        const cleanedDeparturePrices = {};
-        Object.entries(form.departurePrices || {}).forEach(([city, prices]) => {
-          const cleaned = {};
-          Object.entries(prices).forEach(([size, price]) => {
-            if (price && Number(price) > 0) cleaned[size] = Number(price);
-          });
-          if (Object.keys(cleaned).length > 0) cleanedDeparturePrices[city] = cleaned;
-        });
-        fd.append('departurePrices', JSON.stringify(cleanedDeparturePrices));
+        fd.append('departurePrices', JSON.stringify(cleanDeparturePrices(form.departurePrices)));
 
         if (imageFile) {
           fd.append('coverImage', imageFile);
@@ -2685,12 +2795,80 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
                     name="category" value={form.category} onChange={handleChange}
                     className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40"
                   >
-                    <option value="culture">Culture</option>
-                    <option value="nature">Nature</option>
-                    <option value="aventure">Aventure</option>
-                    <option value="detente">Détente</option>
+                 <option value="culture">Culture</option>
+                  <option value="nature">Nature</option>
+                  <option value="desert">Désert</option>
+                  <option value="beach">Plage</option>
+                  <option value="city">Ville</option>
+                  <option value="roman">Romain</option>
                   </select>
                 </div>
+
+                {/* Prix du groupe par ville de départ */}
+                <div className="md:col-span-2">
+                  <DeparturePricesFields
+                    value={form.departurePrices}
+                    onChange={(dp) => setForm((prev) => ({ ...prev, departurePrices: dp }))}
+                  />
+                </div>
+
+                {/* Programme */}
+                <div className="md:col-span-2">
+                  <label className="block text-[10px] uppercase tracking-wider text-muted mb-1">Programme de la journée</label>
+                  {form.itinerary.map((step, index) => (
+                    <div key={index} className="flex gap-2 mb-2 items-start bg-[#35354A] p-2 rounded border border-white/10">
+                      <input
+                        type="text" placeholder="08:00" value={step.time}
+                        onChange={(e) => updateStep(index, 'time', e.target.value)}
+                        className="w-20 bg-[#2A2A3C] border border-white/10 rounded px-2 py-1 text-sm text-cream focus:outline-none"
+                      />
+                      <input
+                        type="text" placeholder="Titre (ex: Départ)" value={step.title}
+                        onChange={(e) => updateStep(index, 'title', e.target.value)}
+                        className="flex-1 bg-[#2A2A3C] border border-white/10 rounded px-2 py-1 text-sm text-cream focus:outline-none"
+                      />
+                      <input
+                        type="text" placeholder="Description" value={step.description}
+                        onChange={(e) => updateStep(index, 'description', e.target.value)}
+                        className="flex-[2] bg-[#2A2A3C] border border-white/10 rounded px-2 py-1 text-sm text-cream focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeStep(index)}
+                        className="p-1 text-red-400 hover:text-red-300"
+                        title="Supprimer l'étape"
+                      >
+                        <FiX size={16} />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={addStep}
+                    className="text-xs text-gold hover:underline flex items-center gap-1"
+                  >
+                    <FiPlus size={12} /> Ajouter une étape
+                  </button>
+                </div>
+
+                {/* Inclus / Non inclus */}
+                <div>
+                  <label className="block text-[10px] uppercase tracking-wider text-muted mb-1">Inclus (un par ligne)</label>
+                  <textarea
+                    name="includes" value={form.includes} onChange={handleChange} rows="4"
+                    placeholder={"L'assurance\nLe carburant\nLe transport"}
+                    className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40 resize-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] uppercase tracking-wider text-muted mb-1">Non inclus (un par ligne)</label>
+                  <textarea
+                    name="excludes" value={form.excludes} onChange={handleChange} rows="4"
+                    placeholder={"Les repas\nLes dépenses personnelles"}
+                    className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40 resize-none"
+                  />
+                </div>
+
                 <div className="md:col-span-2">
                   <label className="block text-[10px] uppercase tracking-wider text-muted mb-1">Image de couverture</label>
                   <div className="flex items-center gap-4">

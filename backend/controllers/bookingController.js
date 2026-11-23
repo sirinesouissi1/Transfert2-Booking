@@ -1,6 +1,7 @@
 const asyncHandler = require('express-async-handler');
 const mongoose = require('mongoose');
 const Booking = require('../models/Booking');
+const Vehicle = require('../models/Vehicle'); // ✅ AJOUT : pour valider la capacité
 const { sendBookingConfirmation, sendAdminNotification } = require('../utils/emailService');
 
 // Champs autorisés (évite qu'un client force status, confirmationCode, etc.)
@@ -36,6 +37,40 @@ exports.createBooking = asyncHandler(async (req, res) => {
     throw new Error('Date de départ invalide');
   }
   if (!body.returnDate) delete body.returnDate;
+
+  // ✅ VALIDATION CAPACITÉ : on vérifie que le véhicule existe,
+  // qu'il est actif et que le nombre de passagers ne dépasse pas sa capacité.
+  const vehicle = await Vehicle.findById(body.vehicle).select('name capacity isActive');
+  if (!vehicle) {
+    res.status(404);
+    throw new Error('Véhicule introuvable.');
+  }
+  if (vehicle.isActive === false) {
+    res.status(400);
+    throw new Error('Ce véhicule n\'est plus disponible à la réservation.');
+  }
+
+  const adults = Number(body.passengers?.adults || 0);
+  const children = Number(body.passengers?.children || 0);
+  const totalPassengers = adults + children;
+
+  if (adults < 1) {
+    res.status(400);
+    throw new Error('Au moins un adulte est requis pour réserver.');
+  }
+
+  if (vehicle.capacity && totalPassengers > vehicle.capacity) {
+    res.status(400);
+    throw new Error(
+      `Capacité maximale du véhicule "${vehicle.name}" : ${vehicle.capacity} passager(s). Vous avez demandé ${totalPassengers}.`
+    );
+  }
+
+  // ✅ Normalise passengers pour être sûr du format stocké
+  body.passengers = {
+    adults,
+    children,
+  };
 
   const booking = await Booking.create(body);
   const fullBooking = await Booking.findById(booking._id).populate('vehicle');
