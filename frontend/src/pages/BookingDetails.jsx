@@ -14,7 +14,7 @@ import { useLanguage } from '../context/LanguageContext';
 const ALL_COUNTRIES = [
     { name: "Afghanistan", code: "+93", flag: "🇦🇫" },
     { name: "Afrique du Sud", code: "+27", flag: "🇿🇦" },
-    { name: "Îles Åland", code: "+358", flag: "AX" },
+    { name: "Îles Åland", code: "+358", flag: "🇦🇽" },
     { name: "Albanie", code: "+355", flag: "🇦🇱" },
     { name: "Algérie", code: "+213", flag: "🇩🇿" },
     { name: "Allemagne", code: "+49", flag: "🇩🇪" },
@@ -289,7 +289,10 @@ const translations = {
     placeholderFlight: "Entrez votre numéro de vol",
     searchCountry: "Rechercher un pays...",
     noCountryFound: "Aucun pays trouvé",
-    // ✅ Ajout capacité
+    // Carte
+    openMaps: "Ouvrir dans Google Maps",
+    mapTitle: "Carte du trajet",
+    // Capacité
     passengersLabel: "Passagers",
     maxCapacityReached: "Capacité maximale atteinte",
     maxCapacityInfo: "Ce véhicule peut accueillir jusqu'à {max} passager(s).",
@@ -334,7 +337,10 @@ const translations = {
     placeholderFlight: "Enter your flight number",
     searchCountry: "Search for a country...",
     noCountryFound: "No country found",
-    // ✅ Ajout capacité
+    // Map
+    openMaps: "Open in Google Maps",
+    mapTitle: "Route map",
+    // Capacity
     passengersLabel: "Passengers",
     maxCapacityReached: "Max capacity reached",
     maxCapacityInfo: "This vehicle can hold up to {max} passenger(s).",
@@ -407,20 +413,23 @@ export default function BookingDetails() {
     return '';
   };
 
-  // ✅ bookingData inclut maintenant `capacity`
-  const bookingData = useMemo(() => ({
-    vehicleId: params.get('vehicleId') || '',
-    vehicleName: params.get('vehicleName') || 'Berline Affaires',
-    price: params.get('price') || null,
-    image: params.get('image') || 'https://i.ibb.co/vYm6D4Y/skoda-octavia.png',
-    from: params.get('from') || 'Tunis Carthage Airport',
-    to: params.get('to') || 'Sousse',
-    departureDate: params.get('departureDate') || '',
-    returnDate: params.get('returnDate') || '',
-    tripType: params.get('tripType') || 'one-way',
-    passengers: params.get('passengers') || '1',
-    capacity: parseInt(params.get('capacity') || '0', 10) || 0,
-  }), [params]);
+  // ✅ bookingData dépend de location.search (stable) pour ne pas recharger l'iframe inutilement
+  const bookingData = useMemo(() => {
+    const p = new URLSearchParams(location.search);
+    return {
+      vehicleId: p.get('vehicleId') || '',
+      vehicleName: p.get('vehicleName') || 'Berline Affaires',
+      price: p.get('price') || null,
+      image: p.get('image') || 'https://i.ibb.co/vYm6D4Y/skoda-octavia.png',
+      from: p.get('from') || 'Tunis Carthage Airport',
+      to: p.get('to') || 'Sousse',
+      departureDate: p.get('departureDate') || '',
+      returnDate: p.get('returnDate') || '',
+      tripType: p.get('tripType') || 'one-way',
+      passengers: p.get('passengers') || '1',
+      capacity: parseInt(p.get('capacity') || '0', 10) || 0,
+    };
+  }, [location.search]);
 
   const [formData, setFormData] = useState({
     prenom: '', nom: '', email: '', phone: '',
@@ -716,6 +725,33 @@ export default function BookingDetails() {
                 <JourneyStep label={t.departure} value={bookingData.from} icon={<Plane size={14}/>} />
                 <JourneyStep label={t.destination} value={bookingData.to} icon={<MapPin size={14}/>} isLast />
               </div>
+
+              {/* ✅ Carte Google Maps du trajet */}
+              <div className="mt-8 border border-white/10 rounded-sm overflow-hidden bg-[#1F1F2E]">
+                <div className="relative h-[220px] w-full">
+                  <iframe
+                    title={t.mapTitle}
+                    width="100%"
+                    height="100%"
+                    style={{ border: 0 }}
+                    src={`https://maps.google.com/maps?saddr=${encodeURIComponent(bookingData.from)}&daddr=${encodeURIComponent(bookingData.to)}&output=embed`}
+                    allowFullScreen
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                    className="absolute inset-0 opacity-90 hover:opacity-100 transition-opacity duration-300"
+                  ></iframe>
+                </div>
+                <div className="p-3 bg-white/5 border-t border-white/5 text-center">
+                  <a
+                    href={`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(bookingData.from)}&destination=${encodeURIComponent(bookingData.to)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[10px] font-semibold text-gold hover:text-white flex items-center justify-center gap-2 transition-colors uppercase tracking-wider"
+                  >
+                    <MapPin size={12} /> {t.openMaps}
+                  </a>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -817,7 +853,7 @@ function FormInput({ label, type = "text", icon, onChange, placeholder }) {
   );
 }
 
-// ✅ Counter accepte désormais min et max, avec boutons désactivés visuellement
+// ✅ Counter accepte min et max, avec boutons désactivés visuellement
 function Counter({ label, value, onUpdate, min = 0, max = Infinity }) {
   const canDec = value > min;
   const canInc = value < max;
