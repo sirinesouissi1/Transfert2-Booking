@@ -1,7 +1,7 @@
 // pages/formulaire/SelectVehicle.jsx
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { MapPin, Users, Calendar, ArrowRight, Check, Clock } from 'lucide-react';
+import { MapPin, Users, Calendar, ArrowRight, Check, Clock, Luggage, Snowflake } from 'lucide-react';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import { useLanguage } from '../context/LanguageContext';
@@ -16,7 +16,8 @@ const translations = {
     departure: "Départ", destination: "Destination", returnLabel: "Retour",
     passengers: "Passagers", passengerWord: "personne(s)",
     tripType: "Type de trajet", oneWay: "Aller simple", roundTrip: "Aller-retour",
-    notSpecified: "Non spécifiée", seats: "places", waitingIncluded: "Attente Incluse",
+    notSpecified: "Non spécifiée", seats: "places",
+    luggage: "Bagages", ac: "Clim.",
     totalPrice: "Tarif tout inclus", priceOnRequest: "Prix sur demande",
     continueBtn: "Continuer", errorLoading: "Erreur lors du chargement des véhicules."
   },
@@ -27,7 +28,8 @@ const translations = {
     departure: "Departure", destination: "Destination", returnLabel: "Return",
     passengers: "Passengers", passengerWord: "person(s)",
     tripType: "Trip Type", oneWay: "One way", roundTrip: "Round trip",
-    notSpecified: "Not specified", seats: "seats", waitingIncluded: "Waiting Included",
+    notSpecified: "Not specified", seats: "seats",
+    luggage: "Luggage", ac: "A/C",
     totalPrice: "All-inclusive price", priceOnRequest: "Price on request",
     continueBtn: "Continue", errorLoading: "Error loading vehicles."
   }
@@ -229,9 +231,21 @@ export default function SelectVehicle() {
                   </div>
 
                   <div className="mt-auto space-y-6">
-                    <div className="flex items-center justify-between text-xs text-cream/40 border-b border-white/5 pb-4">
-                      <span className="flex items-center gap-2"><Users size={14} className="text-gold"/> {car.capacity} {t.seats}</span>
-                      <span className="flex items-center gap-2"><Clock size={14} className="text-gold"/> {t.waitingIncluded}</span>
+                    <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-cream/60 border-b border-white/5 pb-4">
+                      <span className="flex items-center gap-2">
+                        <Users size={14} className="text-gold" /> {car.capacity} {t.seats}
+                      </span>
+                      {Number(car.luggage) > 0 && (
+                        <span className="flex items-center gap-2">
+                          <Luggage size={14} className="text-gold" /> x{car.luggage} {t.luggage}
+                        </span>
+                      )}
+                      {car.hasAC && (
+                        <span className="flex items-center gap-2">
+                          <Snowflake size={14} className="text-gold" /> {t.ac}
+                        </span>
+                      )}
+                   
                     </div>
 
                     <div className="flex items-center justify-between">

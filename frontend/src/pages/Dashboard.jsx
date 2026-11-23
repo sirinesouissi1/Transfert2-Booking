@@ -59,7 +59,9 @@ import {
   FiCheck,
   FiSave,
   FiImage,
+  FiBriefcase,
 } from 'react-icons/fi';
+import { FaSnowflake } from 'react-icons/fa';
 import { ALL_LOCATIONS } from '../constants/locations';
 
 const API_URL = (import.meta.env.VITE_API_URL || 'https://go-taxi-api.onrender.com/api').replace(/\/$/, '');
@@ -165,6 +167,33 @@ function DeparturePricesFields({ value, onChange }) {
         ))}
       </div>
       <p className="text-muted text-[10px] mt-1">Laisser vide = pas de tarif pour cette combinaison.</p>
+    </div>
+  );
+}
+
+// ------------------------------------------------------------------
+// Caractéristiques véhicule : « 4 passagers · x3 Bagages · Clim. »
+// ------------------------------------------------------------------
+function VehicleSpecs({ capacity, luggage, hasAC }) {
+  const hasLuggage = Number(luggage) > 0;
+  return (
+    <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-cream">
+      <span className="flex items-center gap-2">
+        <FiUsers className="text-gold" size={16} />
+        {capacity ? `${capacity} passagers` : '-'}
+      </span>
+      {hasLuggage && (
+        <span className="flex items-center gap-2">
+          <FiBriefcase className="text-gold" size={16} />
+          x{luggage} Bagages
+        </span>
+      )}
+      {hasAC && (
+        <span className="flex items-center gap-2">
+          <FaSnowflake className="text-gold" size={15} />
+          Clim.
+        </span>
+      )}
     </div>
   );
 }
@@ -1956,7 +1985,10 @@ function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin, vehic
 
   if (!item) return null;
 
-  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleChange = (e) => {
+    const { name, value, type: inputType, checked } = e.target;
+    setFormData({ ...formData, [name]: inputType === 'checkbox' ? checked : value });
+  };
 
   const updateStep = (index, field, value) => {
     setItineraryArr((prev) => prev.map((s, i) => (i === index ? { ...s, [field]: value } : s)));
@@ -2025,6 +2057,11 @@ function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin, vehic
               <DetailRow label="Nom">{item.name}</DetailRow>
               <DetailRow label="Capacité">{item.capacity ? `${item.capacity} personnes` : '-'}</DetailRow>
               <DetailRow label="Prix">{formatPrice(item.price)}</DetailRow>
+            </DetailSection>
+            <DetailSection title="Caractéristiques" icon={<FiTruck />}>
+              <div className="px-4 py-3">
+                <VehicleSpecs capacity={item.capacity} luggage={item.luggage} hasAC={item.hasAC} />
+              </div>
             </DetailSection>
             <DetailSection title="Description" icon={<FiTag />}>
               <p className="px-4 py-3 text-sm text-cream/90 leading-relaxed">{item.description || '-'}</p>
@@ -2296,6 +2333,19 @@ function ResourceModal({ resource, item, type, onClose, onUpdate, isAdmin, vehic
             </div>
           </div>
 
+          <div className="grid grid-cols-2 gap-3 items-end">
+            <div>
+              <label className="block text-sm text-muted mb-1">Bagages (nombre)</label>
+              <input type="number" min="0" name="luggage" value={formData.luggage ?? ''} onChange={handleChange}
+                placeholder="Ex: 3"
+                className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-cream" />
+            </div>
+            <label className="flex items-center gap-2 text-sm text-cream cursor-pointer pb-2">
+              <input type="checkbox" name="hasAC" checked={!!formData.hasAC} onChange={handleChange} className="accent-gold" />
+              <FaSnowflake className="text-gold" size={14} /> Climatisation
+            </label>
+          </div>
+
           <div>
             <label className="block text-sm text-muted mb-1">Image</label>
             <div className="flex items-center gap-4">
@@ -2503,7 +2553,7 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
 
   const [form, setForm] = useState(
     isVehicle
-      ? { name: '', description: '', price: '', capacity: '' }
+      ? { name: '', description: '', price: '', capacity: '', luggage: '', hasAC: false }
       : {
           name: '',
           shortDesc: '',
@@ -2593,6 +2643,8 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
         fd.append('name', form.name.trim());
         fd.append('description', form.description.trim());
         fd.append('capacity', String(Number(form.capacity)));
+        fd.append('luggage', String(Number(form.luggage) || 0));
+        fd.append('hasAC', String(!!form.hasAC));
 
         if (form.price !== '' && Number(form.price) > 0) {
           fd.append('price', String(Number(form.price)));
@@ -2710,6 +2762,20 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
                     className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40"
                   />
                 </div>
+                <div>
+                  <label className="block text-[10px] uppercase tracking-wider text-muted mb-1">Bagages (nombre)</label>
+                  <input
+                    type="number" min="0" name="luggage" value={form.luggage} onChange={handleChange}
+                    placeholder="Ex: 3"
+                    className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-sm text-cream placeholder-muted/40 focus:outline-none focus:border-gold/40"
+                  />
+                </div>
+                <div className="flex items-end">
+                  <label className="flex items-center gap-2 text-sm text-cream cursor-pointer py-2">
+                    <input type="checkbox" name="hasAC" checked={form.hasAC} onChange={handleChange} className="accent-gold" />
+                    <FaSnowflake className="text-gold" size={14} /> Climatisation
+                  </label>
+                </div>
                 <div className="md:col-span-2">
                   <label className="block text-[10px] uppercase tracking-wider text-muted mb-1">Image</label>
                   <div className="flex items-center gap-4">
@@ -2795,12 +2861,12 @@ function CreateResourceModal({ resource, onClose, onCreated }) {
                     name="category" value={form.category} onChange={handleChange}
                     className="w-full bg-[#35354A] border border-white/10 rounded px-3 py-2 text-sm text-cream focus:outline-none focus:border-gold/40"
                   >
-                 <option value="culture">Culture</option>
-                  <option value="nature">Nature</option>
-                  <option value="desert">Désert</option>
-                  <option value="beach">Plage</option>
-                  <option value="city">Ville</option>
-                  <option value="roman">Romain</option>
+                    <option value="culture">Culture</option>
+                    <option value="nature">Nature</option>
+                    <option value="desert">Désert</option>
+                    <option value="beach">Plage</option>
+                    <option value="city">Ville</option>
+                    <option value="roman">Romain</option>
                   </select>
                 </div>
 

@@ -8,6 +8,15 @@ const getImageValue = (file) =>
     ? `data:${file.mimetype};base64,${file.buffer.toString('base64')}`
     : file.filename;
 
+// multipart/form-data envoie tout en chaîne : 'true' / 'false'
+const toBool = (v) => v === true || v === 'true' || v === 'on' || v === '1';
+
+// Nombre de bagages : vide / invalide / négatif → 0
+const toLuggage = (v) => {
+  const n = Number(v);
+  return v === '' || v === null || v === undefined || isNaN(n) || n < 0 ? 0 : Math.floor(n);
+};
+
 // @route GET /api/vehicles
 exports.getVehicles = asyncHandler(async (req, res) => {
   const vehicles = await Vehicle.find({ isActive: true }).sort({ capacity: 1 });
@@ -31,7 +40,7 @@ exports.getVehicle = asyncHandler(async (req, res) => {
 // @route POST /api/vehicles
 exports.createVehicle = asyncHandler(async (req, res) => {
   const body = req.body || {};
-  const { name, description, capacity, price } = body;
+  const { name, description, capacity, price, luggage, hasAC } = body;
 
   if (!name || !String(name).trim()) {
     res.status(400);
@@ -51,6 +60,8 @@ exports.createVehicle = asyncHandler(async (req, res) => {
     name: String(name).trim(),
     description: description ? String(description).trim() : '',
     capacity: Number(capacity),
+    luggage: toLuggage(luggage),
+    hasAC: toBool(hasAC),
     price: null,
   };
 
@@ -73,7 +84,7 @@ exports.updateVehicle = asyncHandler(async (req, res) => {
   }
 
   const body = req.body || {};
-  const allowed = ['name', 'description', 'capacity', 'price', 'features', 'isActive'];
+  const allowed = ['name', 'description', 'capacity', 'luggage', 'hasAC', 'price', 'features', 'isActive'];
   const data = {};
   allowed.forEach((field) => {
     if (body[field] !== undefined) data[field] = body[field];
@@ -88,6 +99,9 @@ exports.updateVehicle = asyncHandler(async (req, res) => {
     }
     data.capacity = Number(data.capacity);
   }
+
+  if (data.luggage !== undefined) data.luggage = toLuggage(data.luggage);
+  if (data.hasAC !== undefined) data.hasAC = toBool(data.hasAC);
 
   if (data.price !== undefined) {
     if (
