@@ -41,6 +41,32 @@ const normalizeTripType = (t) => {
   return 'one_way';
 };
 
+// ✅ L'ordre exact d'affichage souhaité (du 1er au dernier)
+const VEHICLE_ORDER = [
+  'vw virtus',
+  'skoda octavia',
+  'suzuki ertiga',
+  'vw transporter',
+  'mercedes classe e',
+];
+
+// ✅ Fonction pour trier les véhicules selon l'ordre défini
+const sortVehicles = (list = []) => {
+  const rank = (name = '') => {
+    // Supprime les accents (ex: "Škoda" devient "skoda") et met en minuscule
+    const normalized = name
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim();
+
+    const idx = VEHICLE_ORDER.findIndex((key) => normalized.includes(key));
+    return idx === -1 ? 999 : idx; // Si le véhicule n'est pas dans la liste, il va à la fin
+  };
+
+  return [...list].sort((a, b) => rank(a.name) - rank(b.name));
+};
+
 export default function SelectVehicle() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -80,7 +106,8 @@ export default function SelectVehicle() {
         });
 
         if (!cancelled) {
-          setVehicles(res.data.vehicles || []);
+          // ✅ APPLICATION DU TRI ICI
+          setVehicles(sortVehicles(res.data.vehicles || []));
         }
       } catch (err) {
         console.error('Erreur chargement véhicules:', err);
@@ -223,7 +250,7 @@ export default function SelectVehicle() {
 
                   <div className="mb-6">
                     <h3 className="font-serif text-2xl mb-1">{car.name}</h3>
-                    <p className="text-[10px] uppercase tracking-[2px] text-gold/60">{car.description || car.desc}</p>
+                    {/* ✅ DESCRIPTION SUPPRIMÉE ICI */}
                   </div>
 
                   <div className="relative h-44 mb-8 transition-transform duration-700 group-hover:scale-110">
@@ -245,7 +272,6 @@ export default function SelectVehicle() {
                           <Snowflake size={14} className="text-gold" /> {t.ac}
                         </span>
                       )}
-                   
                     </div>
 
                     <div className="flex items-center justify-between">
