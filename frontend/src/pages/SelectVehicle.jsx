@@ -1,11 +1,11 @@
 // pages/formulaire/SelectVehicle.jsx
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { MapPin, Users, Calendar, ArrowRight, Check, Clock, Luggage, Snowflake } from 'lucide-react';
+import { MapPin, Users, Calendar, ArrowRight, Check, Clock, Luggage, Snowflake, Plane } from 'lucide-react';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import { useLanguage } from '../context/LanguageContext';
-import { priceAPI } from '../services/api'; // ✅ AJOUT
+import { priceAPI } from '../services/api';
 
 const translations = {
   fr: {
@@ -19,7 +19,10 @@ const translations = {
     notSpecified: "Non spécifiée", seats: "places",
     luggage: "Bagages", ac: "Clim.",
     totalPrice: "Tarif tout inclus", priceOnRequest: "Prix sur demande",
-    continueBtn: "Continuer", errorLoading: "Erreur lors du chargement des véhicules."
+    continueBtn: "Continuer", errorLoading: "Erreur lors du chargement des véhicules.",
+    routeInfo: "Itinéraire du transfert",
+    openMaps: "Ouvrir dans Google Maps",
+    tripDetails: "Détails du Trajet"
   },
   en: {
     loading: "Loading vehicles...",
@@ -31,39 +34,28 @@ const translations = {
     notSpecified: "Not specified", seats: "seats",
     luggage: "Luggage", ac: "A/C",
     totalPrice: "All-inclusive price", priceOnRequest: "Price on request",
-    continueBtn: "Continue", errorLoading: "Error loading vehicles."
+    continueBtn: "Continue", errorLoading: "Error loading vehicles.",
+    routeInfo: "Transfer route",
+    openMaps: "Open in Google Maps",
+    tripDetails: "Trip Details"
   }
 };
 
-// ✅ Normalisation UNIQUE et réutilisable
 const normalizeTripType = (t) => {
   if (t === 'round_trip' || t === 'round-trip') return 'round_trip';
   return 'one_way';
 };
 
-// ✅ L'ordre exact d'affichage souhaité (du 1er au dernier)
 const VEHICLE_ORDER = [
-  'vw virtus',
-  'skoda octavia',
-  'suzuki ertiga',
-  'vw transporter',
-  'mercedes classe e',
+  'vw virtus', 'skoda octavia', 'suzuki ertiga', 'vw transporter', 'mercedes classe e',
 ];
 
-// ✅ Fonction pour trier les véhicules selon l'ordre défini
 const sortVehicles = (list = []) => {
   const rank = (name = '') => {
-    // Supprime les accents (ex: "Škoda" devient "skoda") et met en minuscule
-    const normalized = name
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .trim();
-
+    const normalized = name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
     const idx = VEHICLE_ORDER.findIndex((key) => normalized.includes(key));
-    return idx === -1 ? 999 : idx; // Si le véhicule n'est pas dans la liste, il va à la fin
+    return idx === -1 ? 999 : idx;
   };
-
   return [...list].sort((a, b) => rank(a.name) - rank(b.name));
 };
 
@@ -97,23 +89,15 @@ export default function SelectVehicle() {
       setError(null);
       try {
         const normalizedTripType = normalizeTripType(tripData.tripType);
-
-        // ✅ Utilisation de priceAPI (base URL + auth via l'intercepteur axios)
         const res = await priceAPI.forTrip({
           from: tripData.from,
           to: tripData.to,
           tripType: normalizedTripType,
         });
-
-        if (!cancelled) {
-          // ✅ APPLICATION DU TRI ICI
-          setVehicles(sortVehicles(res.data.vehicles || []));
-        }
+        if (!cancelled) setVehicles(sortVehicles(res.data.vehicles || []));
       } catch (err) {
         console.error('Erreur chargement véhicules:', err);
-        if (!cancelled) {
-          setError(err.response?.data?.message || t.errorLoading);
-        }
+        if (!cancelled) setError(err.response?.data?.message || t.errorLoading);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -133,7 +117,6 @@ export default function SelectVehicle() {
       vehicleName: vehicle.name,
       price: vehicle.price ?? '',
       image: vehicle.image || '',
-      // ✅ INDISPENSABLE : capacité du véhicule pour brider les compteurs côté formulaire
       capacity: vehicle.capacity ?? '',
       from: tripData.from,
       to: tripData.to,
@@ -167,8 +150,9 @@ export default function SelectVehicle() {
     <div className="bg-dark-DEFAULT min-h-screen font-sans text-cream selection:bg-gold selection:text-dark">
       <Navbar />
       <main className="max-w-7xl mx-auto px-6 pt-32 pb-20">
+        
         {/* Stepper */}
-        <div className="flex flex-col items-center mb-12 animate-fade-in">
+        <div className="flex flex-col items-center mb-10 animate-fade-in">
           <h1 className="font-serif text-4xl md:text-5xl mb-8 text-center tracking-tight">
             {t.title} <em className="text-gold italic underline decoration-gold/30 underline-offset-8">{t.titleEm}</em>
           </h1>
@@ -181,138 +165,184 @@ export default function SelectVehicle() {
           </div>
         </div>
 
-        {/* Résumé trajet */}
-        <div className="max-w-4xl mx-auto mb-16 animate-fade-in delay-100 bg-dark-2/40 backdrop-blur-sm border border-white/5 p-6 rounded-sm">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="flex items-start gap-4">
-              <MapPin className="text-gold shrink-0" size={20} />
-              <div>
-                <p className="text-[10px] uppercase tracking-widest text-cream/40">{t.departure}</p>
-                <p className="font-medium">{tripData.from}</p>
-                <p className="text-sm text-cream/60">{formatDate(tripData.date)}</p>
+        {/* ✅ NOUVELLE DISPOSITION : 2 Colonnes */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          
+          {/* Colonne GAUCHE : Liste des véhicules (8/12) */}
+          <div className="lg:col-span-8 animate-fade-up">
+            {error && (
+              <div className="mb-8 p-4 bg-red-500/10 border border-red-500/30 text-red-400 rounded text-sm">
+                {error}
               </div>
-            </div>
-            <div className="flex items-start gap-4">
-              <MapPin className="text-gold shrink-0" size={20} />
-              <div>
-                <p className="text-[10px] uppercase tracking-widest text-cream/40">{t.destination}</p>
-                <p className="font-medium">{tripData.to}</p>
-                {tripData.tripType === 'round-trip' && tripData.returnDate && (
-                  <p className="text-sm text-cream/60">{t.returnLabel} : {formatDate(tripData.returnDate)}</p>
-                )}
-              </div>
-            </div>
-            <div className="flex items-start gap-4">
-              <Users className="text-gold shrink-0" size={20} />
-              <div>
-                <p className="text-[10px] uppercase tracking-widest text-cream/40">{t.passengers}</p>
-                <p className="font-medium">{tripData.passengers} {t.passengerWord}</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-4">
-              <Calendar className="text-gold shrink-0" size={20} />
-              <div>
-                <p className="text-[10px] uppercase tracking-widest text-cream/40">{t.tripType}</p>
-                <p className="font-medium">{tripData.tripType === 'round-trip' ? t.roundTrip : t.oneWay}</p>
-              </div>
-            </div>
-          </div>
-        </div>
+            )}
 
-        {/* Erreur éventuelle */}
-        {error && (
-          <div className="max-w-6xl mx-auto mb-8 p-4 bg-red-500/10 border border-red-500/30 text-red-400 rounded text-sm">
-            {error}
-          </div>
-        )}
-
-        {/* Grille véhicules */}
-        <div className="max-w-6xl mx-auto">
-          {vehicles.length === 0 && !error ? (
-            <p className="text-center text-muted italic py-12">{t.priceOnRequest}</p>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {vehicles.map((car) => (
-                <div
-                  key={car._id}
-                  onClick={() => setSelectedId(car._id)}
-                  className={`group relative bg-dark-2/40 backdrop-blur-md border transition-all duration-500 p-8 flex flex-col cursor-pointer ${
-                    selectedId === car._id
-                      ? 'border-gold shadow-[0_0_40px_rgba(197,160,89,0.1)] translate-y-[-8px]'
-                      : 'border-white/5 hover:border-gold/30 hover:translate-y-[-4px]'
-                  }`}
-                >
-                  <div className={`absolute top-6 right-6 w-6 h-6 rounded-full border flex items-center justify-center transition-all ${
-                    selectedId === car._id ? 'bg-gold border-gold' : 'border-white/20'
-                  }`}>
-                    {selectedId === car._id && <Check size={14} className="text-dark font-bold" />}
-                  </div>
-
-                  <div className="mb-6">
-                    <h3 className="font-serif text-2xl mb-1">{car.name}</h3>
-                    {/* ✅ DESCRIPTION SUPPRIMÉE ICI */}
-                  </div>
-
-                  <div className="relative h-44 mb-8 transition-transform duration-700 group-hover:scale-110">
-                    <img src={car.image} alt={car.name} className="w-full h-full object-contain filter drop-shadow-2xl" />
-                  </div>
-
-                  <div className="mt-auto space-y-6">
-                    <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-cream/60 border-b border-white/5 pb-4">
-                      <span className="flex items-center gap-2">
-                        <Users size={14} className="text-gold" /> {car.capacity} {t.seats}
-                      </span>
-                      {Number(car.luggage) > 0 && (
-                        <span className="flex items-center gap-2">
-                          <Luggage size={14} className="text-gold" /> x{car.luggage} {t.luggage}
-                        </span>
-                      )}
-                      {car.hasAC && (
-                        <span className="flex items-center gap-2">
-                          <Snowflake size={14} className="text-gold" /> {t.ac}
-                        </span>
-                      )}
+            {vehicles.length === 0 && !error ? (
+              <p className="text-center text-muted italic py-12">{t.priceOnRequest}</p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {vehicles.map((car) => (
+                  <div
+                    key={car._id}
+                    onClick={() => setSelectedId(car._id)}
+                    className={`group relative bg-dark-2/40 backdrop-blur-md border transition-all duration-500 p-6 flex flex-col cursor-pointer ${
+                      selectedId === car._id
+                        ? 'border-gold shadow-[0_0_40px_rgba(197,160,89,0.1)] translate-y-[-8px]'
+                        : 'border-white/10 hover:border-gold/30 hover:translate-y-[-4px]'
+                    }`}
+                  >
+                    <div className={`absolute top-5 right-5 w-6 h-6 rounded-full border flex items-center justify-center transition-all ${
+                      selectedId === car._id ? 'bg-gold border-gold' : 'border-white/20'
+                    }`}>
+                      {selectedId === car._id && <Check size={14} className="text-dark font-bold" />}
                     </div>
 
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-[10px] uppercase tracking-widest text-cream/40 mb-1">{t.totalPrice}</p>
-                        {car.price != null && Number(car.price) > 0 ? (
-                          <p className="text-3xl font-serif text-gold">{car.price} €</p>
-                        ) : (
-                          <p className="text-sm text-muted italic">{t.priceOnRequest}</p>
+                    <div className="mb-4">
+                      <h3 className="font-serif text-2xl mb-1 truncate pr-8">{car.name}</h3>
+                    </div>
+
+                    <div className="relative h-36 mb-6 transition-transform duration-700 group-hover:scale-110">
+                      <img src={car.image} alt={car.name} className="w-full h-full object-contain filter drop-shadow-2xl" />
+                    </div>
+
+                    <div className="mt-auto space-y-5">
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-cream/60 border-b border-white/5 pb-4">
+                        <span className="flex items-center gap-1.5">
+                          <Users size={14} className="text-gold" /> {car.capacity} {t.seats}
+                        </span>
+                        {Number(car.luggage) > 0 && (
+                          <span className="flex items-center gap-1.5">
+                            <Luggage size={14} className="text-gold" /> x{car.luggage} {t.luggage}
+                          </span>
+                        )}
+                        {car.hasAC && (
+                          <span className="flex items-center gap-1.5">
+                            <Snowflake size={14} className="text-gold" /> {t.ac}
+                          </span>
                         )}
                       </div>
-                      <span className={`text-[10px] border px-2 py-1 rounded uppercase tracking-wider ${
-                        tripData.tripType === 'round-trip'
-                          ? 'text-purple-400 border-purple-400/30 bg-purple-400/5'
-                          : 'text-blue-400 border-blue-400/30 bg-blue-400/5'
-                      }`}>
-                        {tripData.tripType === 'round-trip' ? t.roundTrip : t.oneWay}
-                      </span>
+
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-[10px] uppercase tracking-widest text-cream/40 mb-1">{t.totalPrice}</p>
+                          {car.price != null && Number(car.price) > 0 ? (
+                            <p className="text-3xl font-serif text-gold">{car.price} €</p>
+                          ) : (
+                            <p className="text-sm text-muted italic">{t.priceOnRequest}</p>
+                          )}
+                        </div>
+                        <span className={`text-[10px] border px-2 py-1 rounded uppercase tracking-wider ${
+                          tripData.tripType === 'round-trip'
+                            ? 'text-purple-400 border-purple-400/30 bg-purple-400/5'
+                            : 'text-blue-400 border-blue-400/30 bg-blue-400/5'
+                        }`}>
+                          {tripData.tripType === 'round-trip' ? t.roundTrip : t.oneWay}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
 
-          <div className="flex justify-center md:justify-end mt-16 animate-fade-in">
-            <button
-              onClick={handleNext}
-              disabled={!selectedId}
-              className={`group relative flex items-center justify-center gap-4 px-16 py-6 uppercase text-xs tracking-[4px] font-bold transition-all overflow-hidden w-full md:w-auto ${
-                selectedId ? 'bg-gold text-dark' : 'bg-white/5 text-white/20 cursor-not-allowed border border-white/10'
-              }`}
-            >
-              <span className="relative z-10 flex items-center gap-3">
-                {t.continueBtn} <ArrowRight size={18} />
-              </span>
-              {selectedId && (
-                <div className="absolute inset-0 bg-white translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
-              )}
-            </button>
+            {/* Bouton Continuer */}
+            <div className="flex justify-center md:justify-start mt-10 animate-fade-in">
+              <button
+                onClick={handleNext}
+                disabled={!selectedId}
+                className={`group relative flex items-center justify-center gap-4 px-16 py-5 uppercase text-xs tracking-[4px] font-bold transition-all overflow-hidden w-full md:w-auto ${
+                  selectedId ? 'bg-gold text-dark' : 'bg-white/5 text-white/20 cursor-not-allowed border border-white/10'
+                }`}
+              >
+                <span className="relative z-10 flex items-center gap-3">
+                  {t.continueBtn} <ArrowRight size={18} />
+                </span>
+                {selectedId && (
+                  <div className="absolute inset-0 bg-white translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+                )}
+              </button>
+            </div>
           </div>
+
+          {/* Colonne DROITE : Carte unifiée (4/12) - Collante au scroll */}
+          <div className="lg:col-span-4 animate-fade-in delay-200 sticky top-32">
+            <div className="bg-dark-2/40 backdrop-blur-xl border border-white/10 p-6 rounded-xs">
+              
+              <h3 className="font-serif text-xl mb-6 border-b border-white/5 pb-4 text-gold">
+                {t.tripDetails}
+              </h3>
+
+              {/* Timeline Trajet */}
+              <div className="space-y-6 mb-8">
+                <div className="flex gap-4">
+                  <div className="flex flex-col items-center">
+                    <div className="w-8 h-8 rounded-full bg-gold/10 border border-gold/30 flex items-center justify-center text-gold">
+                      <Plane size={14} />
+                    </div>
+                    <div className="w-[1px] h-full bg-gradient-to-b from-gold/30 to-transparent my-1"></div>
+                  </div>
+                  <div className="pb-4">
+                    <p className="text-[9px] uppercase tracking-[4px] text-gold/40 mb-1">{t.departure}</p>
+                    <p className="text-sm font-medium text-cream leading-tight">{tripData.from}</p>
+                    <p className="text-xs text-cream/50 mt-1">{formatDate(tripData.date)}</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-4">
+                  <div className="flex flex-col items-center">
+                    <div className="w-8 h-8 rounded-full bg-gold/10 border border-gold/30 flex items-center justify-center text-gold">
+                      <MapPin size={14} />
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[9px] uppercase tracking-[4px] text-gold/40 mb-1">{t.destination}</p>
+                    <p className="text-sm font-medium text-cream leading-tight">{tripData.to}</p>
+                    {tripData.tripType === 'round-trip' && tripData.returnDate && (
+                      <p className="text-xs text-cream/50 mt-1">{t.returnLabel} : {formatDate(tripData.returnDate)}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Infos passagers et type */}
+              <div className="flex flex-wrap gap-2 mb-8">
+                <span className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-1.5 rounded-sm text-[11px] text-cream/80">
+                  <Users size={12} className="text-gold" /> {tripData.passengers} {t.passengerWord}
+                </span>
+                <span className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-1.5 rounded-sm text-[11px] text-cream/80">
+                  <Calendar size={12} className="text-gold" /> {tripData.tripType === 'round-trip' ? t.roundTrip : t.oneWay}
+                </span>
+              </div>
+
+              {/* Carte Google Maps Intégrée */}
+              <div className="border border-white/10 rounded-sm overflow-hidden bg-[#1F1F2E]">
+                <div className="relative h-[220px] w-full">
+                  <iframe
+                    title="Carte du trajet"
+                    width="100%"
+                    height="100%"
+                    style={{ border: 0 }}
+                    src={`https://maps.google.com/maps?saddr=${encodeURIComponent(tripData.from)}&daddr=${encodeURIComponent(tripData.to)}&output=embed`}
+                    allowFullScreen
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                    className="absolute inset-0 opacity-90 hover:opacity-100 transition-opacity duration-300"
+                  ></iframe>
+                </div>
+                <div className="p-3 bg-white/5 border-t border-white/5 text-center">
+                  <a
+                    href={`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(tripData.from)}&destination=${encodeURIComponent(tripData.to)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[10px] font-semibold text-gold hover:text-white flex items-center justify-center gap-2 transition-colors uppercase tracking-wider"
+                  >
+                    <MapPin size={12} /> {t.openMaps}
+                  </a>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
         </div>
       </main>
       <Footer />
