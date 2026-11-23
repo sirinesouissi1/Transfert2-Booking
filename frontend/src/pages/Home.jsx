@@ -35,6 +35,16 @@ const translations = {
     returnDate: "Date de Retour",
     checkPrices: "Vérifier les tarifs",
     enterLocation: "Saisir lieu...",
+    noResult: "Aucun résultat",
+    // ✅ Erreurs de validation du formulaire
+    errFrom: "Veuillez choisir un lieu de départ dans la liste.",
+    errTo: "Veuillez choisir une destination dans la liste.",
+    errSameLocation: "Le départ et la destination doivent être différents.",
+    errDepartDate: "Veuillez choisir une date de départ.",
+    errDepartTime: "Veuillez choisir une heure de départ.",
+    errReturnDate: "Veuillez choisir une date de retour.",
+    errReturnTime: "Veuillez choisir une heure de retour.",
+    errReturnBefore: "Le retour doit être après le départ.",
     premiumVehicles: "Véhicules Premium",
     premiumDesc: "Une flotte moderne et luxueuse pour un confort absolu durant vos trajets.",
     certifiedDrivers: "Chauffeurs Certifiés",
@@ -91,6 +101,16 @@ const translations = {
     returnDate: "Return Date",
     checkPrices: "Check Prices",
     enterLocation: "Enter location...",
+    noResult: "No results",
+    // ✅ Form validation errors
+    errFrom: "Please choose a departure location from the list.",
+    errTo: "Please choose a destination from the list.",
+    errSameLocation: "Departure and destination must be different.",
+    errDepartDate: "Please choose a departure date.",
+    errDepartTime: "Please choose a departure time.",
+    errReturnDate: "Please choose a return date.",
+    errReturnTime: "Please choose a return time.",
+    errReturnBefore: "The return must be after the departure.",
     premiumVehicles: "Premium Vehicles",
     premiumDesc: "A modern and luxurious fleet for absolute comfort during your journeys.",
     certifiedDrivers: "Certified Drivers",
@@ -414,14 +434,23 @@ function Hero({ t, language }) {
     passengers: 1
   });
 
-  // ✅ AJOUT : date minimale (aujourd'hui) pour bloquer les dates passées
+  // ✅ NOUVEAU : erreurs de validation par champ
+  const [errors, setErrors] = useState({});
+  const clearError = (...keys) =>
+    setErrors((prev) => {
+      const next = { ...prev };
+      keys.forEach((k) => delete next[k]);
+      return next;
+    });
+
+  // ✅ date minimale (aujourd'hui) pour bloquer les dates passées
   const now = new Date();
   const minDateTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
     .toISOString()
     .slice(0, 16);
   const todayStr = minDateTime.slice(0, 10); // YYYY-MM-DD
 
-  // ✅ AJOUT : filtre les créneaux si la date choisie est aujourd'hui (retire les heures passées)
+  // ✅ filtre les créneaux si la date choisie est aujourd'hui (retire les heures passées)
   const getAvailableSlots = (selectedDate) => {
     if (selectedDate !== todayStr) return TIME_SLOTS;
     const nowHHmm = minDateTime.slice(11, 16); // HH:mm actuel
@@ -455,17 +484,17 @@ function Hero({ t, language }) {
 
   const [activeField, setActiveField] = useState(null);
   const [filteredLocations, setFilteredLocations] = useState(allLocations);
-  // ✅ FIX : terme de recherche séparé de la valeur sélectionnée
+  // ✅ terme de recherche séparé de la valeur sélectionnée
   const [searchTerm, setSearchTerm] = useState('');
   const dropdownRef = useRef(null);
 
-  // ✅ FIX : quand la langue change, on recalcule les options et on reset la recherche
+  // ✅ quand la langue change, on recalcule les options et on reset la recherche
   useEffect(() => {
     setFilteredLocations(allLocations);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [language]);
 
-  // ✅ FIX : le filtre dépend de searchTerm (et non plus de formData.from/to)
+  // ✅ le filtre dépend de searchTerm (et non plus de formData.from/to)
   useEffect(() => {
     if (!activeField) return;
     const term = searchTerm.toLowerCase().trim();
@@ -488,8 +517,7 @@ function Hero({ t, language }) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // ✅ FIX : à l'ouverture d'un champ, on vide le searchTerm
-  // pour réafficher TOUTES les options, même si une destination était déjà sélectionnée
+  // ✅ à l'ouverture d'un champ, on vide le searchTerm
   const handleFocus = (field) => {
     setActiveField(field);
     setSearchTerm('');
@@ -497,20 +525,52 @@ function Hero({ t, language }) {
 
   const handleSelectLocation = (location) => {
     setFormData(prev => ({ ...prev, [activeField]: location }));
+    clearError(activeField); // ✅ efface l'erreur du champ choisi (et celle de "même lieu")
+    if (activeField === 'from') clearError('to');
     setActiveField(null);
-    setSearchTerm(''); // ✅ FIX : reset après sélection
+    setSearchTerm('');
+  };
+
+  // ✅ NOUVEAU : validation complète avant de passer à l'étape suivante
+  const validate = () => {
+    const e = {};
+
+    if (!formData.from) e.from = t.errFrom;
+    if (!formData.to) e.to = t.errTo;
+    if (formData.from && formData.to && formData.from === formData.to) {
+      e.to = t.errSameLocation;
+    }
+
+    if (!formData.departDate) e.departDate = t.errDepartDate;
+    if (!formData.departTime) e.departTime = t.errDepartTime;
+
+    if (tripType === 'round-trip') {
+      if (!formData.returnDate) e.returnDate = t.errReturnDate;
+      if (!formData.returnTime) e.returnTime = t.errReturnTime;
+
+      if (
+        formData.departDate && formData.departTime &&
+        formData.returnDate && formData.returnTime
+      ) {
+        const dep = `${formData.departDate}T${formData.departTime}`;
+        const ret = `${formData.returnDate}T${formData.returnTime}`;
+        if (ret <= dep) e.returnDate = t.errReturnBefore;
+      }
+    }
+
+    setErrors(e);
+    return Object.keys(e).length === 0;
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
 
+    // ⛔ Bloque la navigation si un champ est vide / invalide
+    if (!validate()) return;
+
     // ✅ Reconstruire les datetime-local (YYYY-MM-DDTHH:mm) pour l'URL
-    const departDateTime = formData.departDate && formData.departTime
-      ? `${formData.departDate}T${formData.departTime}`
-      : '';
-    const returnDateTime = formData.returnDate && formData.returnTime
-      ? `${formData.returnDate}T${formData.returnTime}`
-      : '';
+    const departDateTime = `${formData.departDate}T${formData.departTime}`;
+    const returnDateTime = `${formData.returnDate}T${formData.returnTime}`;
 
     const params = new URLSearchParams({
       from: formData.from,
@@ -520,12 +580,17 @@ function Hero({ t, language }) {
       passengers: formData.passengers.toString()
     });
 
-    if (tripType === 'round-trip' && returnDateTime) {
+    if (tripType === 'round-trip') {
       params.append('returnDate', returnDateTime);
     }
 
     navigate(`/transferts/vehicules?${params.toString()}`);
   };
+
+  const inputBase =
+    'w-full min-w-0 h-12 sm:h-auto bg-white/5 border px-3 py-3 text-base sm:text-sm outline-none text-cream [color-scheme:dark] sm:[color-scheme:normal]';
+  const borderFor = (key) =>
+    errors[key] ? 'border-red-500/60 focus:border-red-500' : 'border-white/10 focus:border-gold';
 
   return (
     <section className="relative sm:min-h-screen flex items-center pt-28 pb-12 sm:pt-28 sm:pb-20 overflow-hidden">
@@ -557,7 +622,8 @@ function Hero({ t, language }) {
               {t.heroDescription}
             </p>
           </div>
-          <div id="#transferts" className="lg:col-span-5 animate-fade-up">
+          {/* ✅ FIX : id sans "#" pour que /#transferts fonctionne */}
+          <div id="transferts" className="lg:col-span-5 animate-fade-up scroll-mt-28">
             <div className="bg-dark-2/40 backdrop-blur-2xl border border-white/10 p-5 sm:p-8 shadow-2xl relative">
               <div className="absolute -top-1 -right-1 w-12 h-12 border-t border-r border-gold/50"></div>
               <h2 className="font-serif text-xl sm:text-2xl text-cream mb-5 sm:mb-6 uppercase tracking-wider">{t.bookingTitle}</h2>
@@ -567,7 +633,10 @@ function Hero({ t, language }) {
                   <button
                     key={type}
                     type="button"
-                    onClick={() => setTripType(type)}
+                    onClick={() => {
+                      setTripType(type);
+                      clearError('returnDate', 'returnTime');
+                    }}
                     className={`text-[11px] sm:text-[10px] uppercase tracking-[2px] pb-2 transition-all relative ${
                       tripType === type ? 'text-gold' : 'text-cream/40 hover:text-cream'
                     }`}
@@ -578,32 +647,36 @@ function Hero({ t, language }) {
                 ))}
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} noValidate className="space-y-4">
                 <LocationInput 
                   label={t.departure} 
                   icon={<MapPin size={16}/>} 
                   value={formData.from} 
-                  onFocus={() => handleFocus('from')}   // ✅ FIX
-                  searchTerm={searchTerm}                // ✅ FIX
-                  onSearchChange={setSearchTerm}         // ✅ FIX
+                  onFocus={() => handleFocus('from')}
+                  searchTerm={searchTerm}
+                  onSearchChange={setSearchTerm}
                   suggestions={filteredLocations} 
                   onSelect={handleSelectLocation} 
                   isActive={activeField === 'from'} 
                   dropdownRef={dropdownRef}
                   placeholder={t.enterLocation}
+                  noResultText={t.noResult}
+                  error={errors.from}
                 />
                 <LocationInput 
                   label={t.destination} 
                   icon={<MapPin size={16} className="text-gold"/>} 
                   value={formData.to} 
-                  onFocus={() => handleFocus('to')}     // ✅ FIX
-                  searchTerm={searchTerm}                // ✅ FIX
-                  onSearchChange={setSearchTerm}         // ✅ FIX
+                  onFocus={() => handleFocus('to')}
+                  searchTerm={searchTerm}
+                  onSearchChange={setSearchTerm}
                   suggestions={filteredLocations} 
                   onSelect={handleSelectLocation} 
                   isActive={activeField === 'to'} 
                   dropdownRef={dropdownRef}
                   placeholder={t.enterLocation}
+                  noResultText={t.noResult}
+                  error={errors.to}
                 />
                 
                 <div className={`grid grid-cols-1 gap-4`}>
@@ -615,13 +688,19 @@ function Hero({ t, language }) {
                         type="date" 
                         min={todayStr}
                         value={formData.departDate}
-                        className="w-full min-w-0 h-12 sm:h-auto bg-white/5 border border-white/10 px-3 py-3 text-base sm:text-sm focus:border-gold outline-none text-cream [color-scheme:dark] sm:[color-scheme:normal]"
-                        onChange={(e) => setFormData({...formData, departDate: e.target.value, departTime: ''})}
+                        className={`${inputBase} ${borderFor('departDate')}`}
+                        onChange={(e) => {
+                          setFormData({...formData, departDate: e.target.value, departTime: ''});
+                          clearError('departDate', 'departTime', 'returnDate');
+                        }}
                       />
                       <select
                         value={formData.departTime}
-                        className="w-full min-w-0 h-12 sm:h-auto bg-white/5 border border-white/10 px-3 py-3 text-base sm:text-sm focus:border-gold outline-none text-cream [color-scheme:dark] sm:[color-scheme:normal]"
-                        onChange={(e) => setFormData({...formData, departTime: e.target.value})}
+                        className={`${inputBase} ${borderFor('departTime')}`}
+                        onChange={(e) => {
+                          setFormData({...formData, departTime: e.target.value});
+                          clearError('departTime', 'returnDate');
+                        }}
                       >
                         <option value="" className="bg-dark-2">--:--</option>
                         {getAvailableSlots(formData.departDate).map((slot) => (
@@ -629,6 +708,7 @@ function Hero({ t, language }) {
                         ))}
                       </select>
                     </div>
+                    <FieldError message={errors.departDate || errors.departTime} />
                   </div>
 
                   {/* --- DATE + HEURE DE RETOUR --- */}
@@ -640,13 +720,19 @@ function Hero({ t, language }) {
                           type="date" 
                           min={formData.departDate || todayStr}
                           value={formData.returnDate}
-                          className="w-full min-w-0 h-12 sm:h-auto bg-white/5 border border-white/10 px-3 py-3 text-base sm:text-sm focus:border-gold outline-none text-cream [color-scheme:dark] sm:[color-scheme:normal]"
-                          onChange={(e) => setFormData({...formData, returnDate: e.target.value, returnTime: ''})}
+                          className={`${inputBase} ${borderFor('returnDate')}`}
+                          onChange={(e) => {
+                            setFormData({...formData, returnDate: e.target.value, returnTime: ''});
+                            clearError('returnDate', 'returnTime');
+                          }}
                         />
                         <select
                           value={formData.returnTime}
-                          className="w-full min-w-0 h-12 sm:h-auto bg-white/5 border border-white/10 px-3 py-3 text-base sm:text-sm focus:border-gold outline-none text-cream [color-scheme:dark] sm:[color-scheme:normal]"
-                          onChange={(e) => setFormData({...formData, returnTime: e.target.value})}
+                          className={`${inputBase} ${borderFor('returnTime')}`}
+                          onChange={(e) => {
+                            setFormData({...formData, returnTime: e.target.value});
+                            clearError('returnTime', 'returnDate');
+                          }}
                         >
                           <option value="" className="bg-dark-2">--:--</option>
                           {getAvailableSlots(formData.returnDate).map((slot) => (
@@ -654,6 +740,7 @@ function Hero({ t, language }) {
                           ))}
                         </select>
                       </div>
+                      <FieldError message={errors.returnDate || errors.returnTime} />
                     </div>
                   )}
                 </div>
@@ -671,6 +758,17 @@ function Hero({ t, language }) {
 }
 
 // --- AUTRES COMPOSANTS DE STRUCTURE ---
+
+// ✅ NOUVEAU : petit message d'erreur sous un champ
+function FieldError({ message }) {
+  if (!message) return null;
+  return (
+    <p className="text-red-400 text-[11px] mt-1 ml-1 flex items-center gap-1.5 animate-fade-in">
+      <span className="inline-block w-1 h-1 rounded-full bg-red-400" />
+      {message}
+    </p>
+  );
+}
 
 function ServiceCard({ icon, title, description, image, learnMore }) {
   return (
@@ -712,10 +810,10 @@ function Feature({ title, description }) {
   );
 }
 
-// ✅ FIX : LocationInput accepte maintenant searchTerm + onSearchChange
+// LocationInput : searchTerm + onSearchChange + affichage d'erreur
 function LocationInput({ 
   label, icon, value, onFocus, isActive, suggestions, onSelect, 
-  dropdownRef, placeholder, searchTerm, onSearchChange 
+  dropdownRef, placeholder, searchTerm, onSearchChange, noResultText, error
 }) {
   return (
     <div className="relative space-y-1">
@@ -723,19 +821,22 @@ function LocationInput({
       <div className="relative">
         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gold/50">{icon}</span>
         <input 
-          // ✅ FIX : quand le champ est actif, on affiche searchTerm (éditable).
+          // Quand le champ est actif, on affiche searchTerm (éditable).
           // Sinon on affiche la valeur sélectionnée.
           value={isActive ? searchTerm : (value || '')}
           onFocus={onFocus}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder={placeholder}
-          className="w-full bg-white/5 border border-white/10 px-10 py-3.5 sm:py-3 text-base sm:text-sm focus:border-gold outline-none text-cream" 
+          className={`w-full bg-white/5 border px-10 py-3.5 sm:py-3 text-base sm:text-sm outline-none text-cream ${
+            error ? 'border-red-500/60 focus:border-red-500' : 'border-white/10 focus:border-gold'
+          }`}
         />
       </div>
+      <FieldError message={error} />
       {isActive && (
         <div ref={dropdownRef} className="absolute z-[100] left-0 right-0 mt-2 bg-dark-2 border border-white/10 shadow-2xl max-h-48 overflow-y-auto">
           {suggestions.length === 0 ? (
-            <div className="px-4 py-3 text-xs text-cream/40 italic">Aucun résultat</div>
+            <div className="px-4 py-3 text-xs text-cream/40 italic">{noResultText}</div>
           ) : (
             suggestions.map((loc) => (
               <div 
