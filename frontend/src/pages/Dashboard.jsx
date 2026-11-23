@@ -487,6 +487,36 @@ function DashboardInner({ toast }) {
     );
   };
 
+  // Suppression groupée (bouton « Effacer » après sélection)
+  const handleBulkDelete = (resource, ids, onDone) => {
+    const isBooking = resource === 'transfer' || resource === 'excursionBooking';
+    askConfirmation(
+      isBooking ? 'Annuler les réservations' : 'Confirmer la suppression',
+      isBooking
+        ? `${ids.length} réservation(s) passeront au statut « Annulé ». Continuer ?`
+        : `Voulez-vous vraiment supprimer ${ids.length} élément(s) ? Cette action est irréversible.`,
+      async () => {
+        const call = (id) => {
+          if (resource === 'vehicle') return vehicleAPI.delete(id);
+          if (resource === 'excursion') return excursionAPI.delete(id);
+          if (resource === 'transfer') return bookingAPI.updateStatus(id, { status: 'cancelled' });
+          return excursionBookingAPI.updateStatus(id, { status: 'cancelled' });
+        };
+        try {
+          const results = await Promise.allSettled(ids.map(call));
+          const failed = results.filter((r) => r.status === 'rejected').length;
+          const ok = ids.length - failed;
+          if (ok > 0) toast.success(`${ok} élément(s) traité(s).`);
+          if (failed > 0) toast.error(`${failed} opération(s) ont échoué.`);
+          onDone && onDone();
+          fetchData(true);
+        } finally {
+          closeConfirmModal();
+        }
+      }
+    );
+  };
+
   const handleUpdate = async (resource, id, data) => {
     try {
       let res;
@@ -897,6 +927,7 @@ function DashboardInner({ toast }) {
               onView={(vehicle) => openViewModal('vehicle', vehicle)}
               onEdit={(vehicle) => openEditModal('vehicle', vehicle)}
               onDelete={(id) => handleDelete('vehicle', id)}
+              onBulkDelete={(ids, done) => handleBulkDelete('vehicle', ids, done)}
             />
           )}
 
@@ -909,6 +940,7 @@ function DashboardInner({ toast }) {
               onView={(excursion) => openViewModal('excursion', excursion)}
               onEdit={(excursion) => openEditModal('excursion', excursion)}
               onDelete={(id) => handleDelete('excursion', id)}
+              onBulkDelete={(ids, done) => handleBulkDelete('excursion', ids, done)}
             />
           )}
 
@@ -934,6 +966,7 @@ function DashboardInner({ toast }) {
               onView={(transfer) => openViewModal('transfer', transfer)}
               onEdit={(transfer) => openEditModal('transfer', transfer)}
               onDelete={(id) => handleDelete('transfer', id)}
+              onBulkDelete={(ids, done) => handleBulkDelete('transfer', ids, done)}
             />
           )}
 
@@ -947,6 +980,7 @@ function DashboardInner({ toast }) {
               onView={(booking) => openViewModal('excursionBooking', booking)}
               onEdit={(booking) => openEditModal('excursionBooking', booking)}
               onDelete={(id) => handleDelete('excursionBooking', id)}
+              onBulkDelete={(ids, done) => handleBulkDelete('excursionBooking', ids, done)}
             />
           )}
 
@@ -1504,6 +1538,103 @@ function VehicleDestinationPricing({ vehicle, isAdmin, onBack, askConfirmation, 
   );
 }
 
+// ------------------------------------------------------------------
+// Sélection multiple + suppression groupée
+// ------------------------------------------------------------------
+function useSelection(items) {
+  const [selected, setSelected] = useState(() => new Set());
+
+  // Seuls les éléments encore visibles (filtrés) comptent
+  const selectedIds = useMemo(
+    () => items.filter((i) => selected.has(i._id)).map((i) => i._id),
+    [items, selected]
+  );
+  const allSelected = items.length > 0 && selectedIds.length === items.length;
+  const someSelected = selectedIds.length > 0 && !allSelected;
+
+  const toggle = (id) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const toggleAll = () =>
+    setSelected(allSelected ? new Set() : new Set(items.map((i) => i._id)));
+
+  const clear = () => setSelected(new Set());
+
+  return {
+    selectedIds,
+    count: selectedIds.length,
+    allSelected,
+    someSelected,
+    toggle,
+    toggleAll,
+    clear,
+    isSelected: (id) => selected.has(id),
+  };
+}
+
+function SelectCheckbox({ checked, indeterminate = false, onChange, title }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = indeterminate;
+  }, [indeterminate]);
+  return (
+    <input
+      ref={ref}
+      type="checkbox"
+      checked={checked}
+      onChange={onChange}
+      title={title}
+      className="accent-gold h-4 w-4 cursor-pointer"
+    />
+  );
+}
+
+function BulkBar({ sel, onDelete, label = 'Effacer' }) {
+  if (sel.count === 0) return null;
+  return (
+    <div className="mb-3 flex items-center justify-between gap-3 bg-gold/10 border border-gold/30 text-gold rounded px-4 py-2 text-sm">
+      <span><strong>{sel.count}</strong> sélectionné(s)</span>
+      <div className="flex items-center gap-2">
+        <button onClick={sel.clear} className="px-3 py-1 text-xs text-muted hover:text-cream">
+          Désélectionner
+        </button>
+        <button
+          onClick={() => onDelete && onDelete(sel.selectedIds, sel.clear)}
+          className="flex items-center gap-2 px-3 py-1 text-xs bg-red-500/20 text-red-400 border border-red-500/30 rounded hover:bg-red-500/30 font-medium"
+        >
+          <FiTrash2 size={13} /> {label} ({sel.count})
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function SelectAllHeader({ sel, compact = false }) {
+  return (
+    <th className={`${compact ? 'p-4' : 'px-4 py-4'} w-10 text-left`}>
+      <SelectCheckbox
+        checked={sel.allSelected}
+        indeterminate={sel.someSelected}
+        onChange={sel.toggleAll}
+        title="Tout sélectionner"
+      />
+    </th>
+  );
+}
+
+function SelectRowCell({ sel, id, compact = false }) {
+  return (
+    <td className={`${compact ? 'p-4' : 'px-4 py-4'} w-10`}>
+      <SelectCheckbox checked={sel.isSelected(id)} onChange={() => sel.toggle(id)} />
+    </td>
+  );
+}
+
 function ActionButtons({ onView, onEdit, onDelete, isAdmin, extra }) {
   return (
     <div className="flex items-center gap-2">
@@ -1638,8 +1769,9 @@ function ClientList({ clients, loading, isAdmin, onView }) {
   );
 }
 
-function VehicleList({ vehicles, loading, isAdmin, onCreate, onView, onEdit, onDelete }) {
+function VehicleList({ vehicles, loading, isAdmin, onCreate, onView, onEdit, onDelete, onBulkDelete }) {
   const f = useTableFilters(vehicles, { searchText: vehicleSearch });
+  const sel = useSelection(f.filtered);
   if (loading) return <div className="text-center py-12">Chargement des véhicules...</div>;
   return (
     <div>
@@ -1655,10 +1787,12 @@ function VehicleList({ vehicles, loading, isAdmin, onCreate, onView, onEdit, onD
         )}
       </div>
       <TableToolbar f={f} placeholder="Rechercher un véhicule…" />
+      {isAdmin && <BulkBar sel={sel} onDelete={onBulkDelete} />}
       <TableCard f={f}>
         <table className="w-full text-sm">
           <thead className="bg-[#35354A] border-b border-white/10">
             <tr>
+              {isAdmin && <SelectAllHeader sel={sel} />}
               <th className="px-6 py-4 text-left text-muted font-medium">Image</th>
               <th className="px-6 py-4 text-left text-muted font-medium">Nom</th>
               <th className="px-6 py-4 text-left text-muted font-medium">Description</th>
@@ -1669,7 +1803,11 @@ function VehicleList({ vehicles, loading, isAdmin, onCreate, onView, onEdit, onD
           </thead>
           <tbody>
             {f.pageItems.map((v) => (
-              <tr key={v._id} className="border-b border-white/10 hover:bg-white/5">
+              <tr
+                key={v._id}
+                className={`border-b border-white/10 hover:bg-white/5 ${sel.isSelected(v._id) ? 'bg-gold/5' : ''}`}
+              >
+                {isAdmin && <SelectRowCell sel={sel} id={v._id} />}
                 <td className="px-6 py-4">
                   {v.image ? (
                     <img
@@ -1700,8 +1838,9 @@ function VehicleList({ vehicles, loading, isAdmin, onCreate, onView, onEdit, onD
   );
 }
 
-function ExcursionList({ excursions, loading, isAdmin, onCreate, onView, onEdit, onDelete }) {
+function ExcursionList({ excursions, loading, isAdmin, onCreate, onView, onEdit, onDelete, onBulkDelete }) {
   const f = useTableFilters(excursions, { searchText: excursionSearch });
+  const sel = useSelection(f.filtered);
   if (loading) return <div className="text-center py-12">Chargement des excursions...</div>;
   return (
     <div>
@@ -1717,10 +1856,12 @@ function ExcursionList({ excursions, loading, isAdmin, onCreate, onView, onEdit,
         )}
       </div>
       <TableToolbar f={f} placeholder="Rechercher (nom, destination)…" />
+      {isAdmin && <BulkBar sel={sel} onDelete={onBulkDelete} />}
       <TableCard f={f}>
         <table className="w-full text-sm">
           <thead className="bg-[#35354A] border-b border-white/10">
             <tr>
+              {isAdmin && <SelectAllHeader sel={sel} />}
               <th className="px-6 py-4 text-left text-muted font-medium">Image</th>
               <th className="px-6 py-4 text-left text-muted font-medium">Nom</th>
               <th className="px-6 py-4 text-left text-muted font-medium">Destination</th>
@@ -1731,7 +1872,11 @@ function ExcursionList({ excursions, loading, isAdmin, onCreate, onView, onEdit,
           </thead>
           <tbody>
             {f.pageItems.map((e) => (
-              <tr key={e._id} className="border-b border-white/10 hover:bg-white/5">
+              <tr
+                key={e._id}
+                className={`border-b border-white/10 hover:bg-white/5 ${sel.isSelected(e._id) ? 'bg-gold/5' : ''}`}
+              >
+                {isAdmin && <SelectRowCell sel={sel} id={e._id} />}
                 <td className="px-6 py-4">
                   <img
                     src={getImageUrl(e.coverImage)}
@@ -1759,9 +1904,10 @@ function ExcursionList({ excursions, loading, isAdmin, onCreate, onView, onEdit,
   );
 }
 
-function TransferList({ bookings, loading, isAdmin, onView, onEdit, onDelete, conflictMap, vehicles = [] }) {
+function TransferList({ bookings, loading, isAdmin, onView, onEdit, onDelete, onBulkDelete, conflictMap, vehicles = [] }) {
   const toast = useToast();
   const f = useTableFilters(bookings, { searchText: bookingSearch, getDate: bookingDate, getStatus: bookingStatus });
+  const sel = useSelection(f.filtered);
   if (loading) return <div className="text-center py-12">Chargement des transferts...</div>;
 
   const handleExport = () => {
@@ -1780,10 +1926,12 @@ function TransferList({ bookings, loading, isAdmin, onView, onEdit, onDelete, co
         periodLabel="Date du transfert"
         onExport={handleExport}
       />
+      {isAdmin && <BulkBar sel={sel} onDelete={onBulkDelete} />}
       <TableCard f={f}>
         <table className="w-full text-sm">
           <thead className="bg-[#35354A] border-b border-white/10">
             <tr>
+              {isAdmin && <SelectAllHeader sel={sel} compact />}
               <th className="p-4 text-left text-muted font-medium">Code</th>
               <th className="p-4 text-left text-muted font-medium">Client</th>
               <th className="p-4 text-left text-muted font-medium">Trajet</th>
@@ -1796,7 +1944,11 @@ function TransferList({ bookings, loading, isAdmin, onView, onEdit, onDelete, co
           </thead>
           <tbody>
             {f.pageItems.map((b) => (
-              <tr key={b._id} className="border-b border-white/10 hover:bg-white/5">
+              <tr
+                key={b._id}
+                className={`border-b border-white/10 hover:bg-white/5 ${sel.isSelected(b._id) ? 'bg-gold/5' : ''}`}
+              >
+                {isAdmin && <SelectRowCell sel={sel} id={b._id} compact />}
                 <td className="p-4 font-mono text-gold">
                   <span className="inline-flex items-center gap-2">
                     {b.confirmationCode}
@@ -1831,9 +1983,10 @@ function TransferList({ bookings, loading, isAdmin, onView, onEdit, onDelete, co
   );
 }
 
-function ExcursionBookingList({ bookings, loading, isAdmin, onView, onEdit, onDelete, conflictMap, vehicles = [] }) {
+function ExcursionBookingList({ bookings, loading, isAdmin, onView, onEdit, onDelete, onBulkDelete, conflictMap, vehicles = [] }) {
   const toast = useToast();
   const f = useTableFilters(bookings, { searchText: bookingSearch, getDate: bookingDate, getStatus: bookingStatus });
+  const sel = useSelection(f.filtered);
   if (loading) return <div className="text-center py-12">Chargement des réservations d'excursions...</div>;
 
   const handleExport = () => {
@@ -1852,10 +2005,12 @@ function ExcursionBookingList({ bookings, loading, isAdmin, onView, onEdit, onDe
         periodLabel="Date de l'excursion"
         onExport={handleExport}
       />
+      {isAdmin && <BulkBar sel={sel} onDelete={onBulkDelete} />}
       <TableCard f={f}>
         <table className="w-full text-sm">
           <thead className="bg-[#35354A] border-b border-white/10">
             <tr>
+              {isAdmin && <SelectAllHeader sel={sel} compact />}
               <th className="p-4 text-left text-muted font-medium">Code</th>
               <th className="p-4 text-left text-muted font-medium">Client</th>
               <th className="p-4 text-left text-muted font-medium">Excursion</th>
@@ -1869,7 +2024,11 @@ function ExcursionBookingList({ bookings, loading, isAdmin, onView, onEdit, onDe
           </thead>
           <tbody>
             {f.pageItems.map((b) => (
-              <tr key={b._id} className="border-b border-white/10 hover:bg-white/5">
+              <tr
+                key={b._id}
+                className={`border-b border-white/10 hover:bg-white/5 ${sel.isSelected(b._id) ? 'bg-gold/5' : ''}`}
+              >
+                {isAdmin && <SelectRowCell sel={sel} id={b._id} compact />}
                 <td className="p-4 font-mono text-gold">
                   <span className="inline-flex items-center gap-2">
                     {b.confirmationCode}

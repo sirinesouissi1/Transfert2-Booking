@@ -5,7 +5,6 @@ import Switch from '@mui/material/Switch';
 import { styled } from '@mui/material/styles';
 import useAuthStore from '../../context/authStore';
 import { useLanguage } from '../../context/LanguageContext';
-
 // Custom styled Switch for dark theme
 const LanguageSwitch = styled(Switch)(({ theme }) => ({
   width: 62,

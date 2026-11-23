@@ -178,9 +178,9 @@ export default function Home() {
         </section>
 
         {/* 2. SECTION À PROPOS (ID: about) */}
-        <section id="about" className="py-24 bg-dark-DEFAULT px-6 scroll-mt-20">
+        <section id="about" className="py-16 sm:py-24 bg-dark-DEFAULT px-6 scroll-mt-20">
           <div className="max-w-7xl mx-auto">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 sm:gap-16 items-center">
               <div className="relative group overflow-hidden">
                 <img 
                   src="https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?auto=format&fit=crop&q=80&w=1000" 
@@ -195,7 +195,7 @@ export default function Home() {
               
               <div className="space-y-6">
                 <h3 className="text-gold uppercase tracking-[4px] text-xs font-bold">{t.whoWeAre}</h3>
-                <h2 className="font-serif text-4xl md:text-5xl leading-tight">
+                <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl leading-tight">
                   {t.aboutTitle} <br /> <span className="text-gold">{t.aboutTitleGold}</span>
                 </h2>
                 <p className="text-cream/70 leading-relaxed text-lg italic">
@@ -213,10 +213,10 @@ export default function Home() {
         </section>
 
         {/* 3. SECTION NOS SERVICES */}
-        <section id="services" className="py-24 bg-dark-2 px-6 scroll-mt-20">
-          <div className="max-w-7xl mx-auto text-center mb-16">
+        <section id="services" className="py-16 sm:py-24 bg-dark-2 px-6 scroll-mt-20">
+          <div className="max-w-7xl mx-auto text-center mb-10 sm:mb-16">
             <h3 className="text-gold uppercase tracking-[4px] text-xs font-bold mb-4">GoTaxi Service</h3>
-            <h2 className="font-serif text-4xl md:text-5xl">{t.ourServices}</h2>
+            <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl">{t.ourServices}</h2>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
@@ -238,14 +238,14 @@ export default function Home() {
         </section>
 
         {/* 4. SECTION POURQUOI NOUS CHOISIR */}
-        <section className="py-24 bg-dark-DEFAULT px-6">
+        <section className="py-16 sm:py-24 bg-dark-DEFAULT px-6">
           <div className="max-w-7xl mx-auto">
-            <div className="text-center mb-16">
-              <h2 className="font-serif text-4xl md:text-5xl mb-4">{t.whyChoose} <span className="text-gold">{t.whyChooseGold}</span></h2>
+            <div className="text-center mb-10 sm:mb-16">
+              <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl mb-4">{t.whyChoose} <span className="text-gold">{t.whyChooseGold}</span></h2>
               <div className="w-24 h-1 bg-gold mx-auto"></div>
             </div>
             
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-8">
               <WhyFeature icon={<ShieldCheck size={30}/>} text={t.safety} />
               <WhyFeature icon={<Car size={30}/>} text={t.premiumMinivan} />
               <WhyFeature icon={<Clock size={30}/>} text={t.punctuality} />
@@ -304,7 +304,7 @@ function ContactSection({ t }) {
     <section id="contact" className="bg-dark-2 scroll-mt-20 border-t border-white/5">
       <div className="grid grid-cols-1 lg:grid-cols-2">
         {/* Map */}
-        <div className="h-[400px] lg:h-auto min-h-[500px] grayscale contrast-125 opacity-50">
+        <div className="h-[260px] sm:h-[400px] lg:h-auto sm:min-h-[500px] grayscale contrast-125 opacity-50">
           <iframe 
             title="Tunisia Map"
             src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3234.332306894056!2d10.634584!3d35.824503!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x130238a67d65755d%3A0xcd6467a3afcdc0d!2sSousse%2C%20Tunisia!5e0!3m2!1sen!2stn!4v1700000000000!5m2!1sen!2stn"
@@ -313,8 +313,8 @@ function ContactSection({ t }) {
         </div>
 
         {/* Formulaire */}
-        <div className="p-12 lg:p-20 space-y-8 bg-dark-2">
-          <h2 className="font-serif text-4xl">{t.contactUs}</h2>
+        <div className="p-6 sm:p-12 lg:p-20 space-y-6 sm:space-y-8 bg-dark-2">
+          <h2 className="font-serif text-3xl sm:text-4xl">{t.contactUs}</h2>
           <p className="text-cream/60">{t.contactDesc}</p>
           
           <form className="space-y-4" onSubmit={handleSubmit}>
@@ -326,7 +326,7 @@ function ContactSection({ t }) {
                 onChange={handleChange}
                 required
                 placeholder={t.fullName} 
-                className="w-full bg-white/5 border border-white/10 px-6 py-4 outline-none focus:border-gold transition-colors text-cream" 
+                className="w-full bg-white/5 border border-white/10 px-4 sm:px-6 py-3.5 sm:py-4 outline-none focus:border-gold transition-colors text-cream" 
               />
               <input 
                 type="email" 
@@ -335,7 +335,7 @@ function ContactSection({ t }) {
                 onChange={handleChange}
                 required
                 placeholder={t.email} 
-                className="w-full bg-white/5 border border-white/10 px-6 py-4 outline-none focus:border-gold transition-colors text-cream" 
+                className="w-full bg-white/5 border border-white/10 px-4 sm:px-6 py-3.5 sm:py-4 outline-none focus:border-gold transition-colors text-cream" 
               />
             </div>
             <input 
@@ -344,7 +344,7 @@ function ContactSection({ t }) {
               value={formData.subject}
               onChange={handleChange}
               placeholder={t.subject} 
-              className="w-full bg-white/5 border border-white/10 px-6 py-4 outline-none focus:border-gold transition-colors text-cream" 
+              className="w-full bg-white/5 border border-white/10 px-4 sm:px-6 py-3.5 sm:py-4 outline-none focus:border-gold transition-colors text-cream" 
             />
             <textarea 
               rows="4" 
@@ -353,7 +353,7 @@ function ContactSection({ t }) {
               onChange={handleChange}
               required
               placeholder={t.message} 
-              className="w-full bg-white/5 border border-white/10 px-6 py-4 outline-none focus:border-gold transition-colors text-cream resize-none"
+              className="w-full bg-white/5 border border-white/10 px-4 sm:px-6 py-3.5 sm:py-4 outline-none focus:border-gold transition-colors text-cream resize-none"
             ></textarea>
 
             {/* Message de succès ou d'erreur */}
@@ -528,10 +528,10 @@ function Hero({ t, language }) {
   };
 
   return (
-    <section className="relative min-h-screen flex items-center pt-20 overflow-hidden">
+    <section className="relative sm:min-h-screen flex items-center pt-28 pb-12 sm:pt-28 sm:pb-20 overflow-hidden">
       <div className="absolute inset-0 z-0">
-        <div className="absolute inset-0 bg-black/50 z-10" />
-        <div className="absolute inset-0 bg-gradient-to-r from-dark-DEFAULT via-dark-DEFAULT/40 to-transparent z-10" />
+        <div className="absolute inset-0 bg-black/60 sm:bg-black/50 z-10" />
+        <div className="absolute inset-0 bg-gradient-to-b sm:bg-gradient-to-r from-dark-DEFAULT/70 sm:from-dark-DEFAULT via-dark-DEFAULT/40 to-dark-DEFAULT/80 sm:to-transparent z-10" />
         <img
           src="/images/bg.jpg"
           alt="Tunisia Luxury"
@@ -540,27 +540,27 @@ function Hero({ t, language }) {
       </div>
 
       <div className="relative z-20 max-w-7xl mx-auto px-6 w-full">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
-          <div className="lg:col-span-7 space-y-4 sm:space-y-8 animate-fade-up">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 sm:gap-16 items-center">
+          <div className="lg:col-span-7 space-y-5 sm:space-y-8 animate-fade-up">
             <div className="inline-flex items-center gap-3 px-4 py-2 border border-gold/30 bg-gold/5 backdrop-blur-sm">
               <span className="w-8 h-[1px] bg-gold"></span>
               <span className="text-gold text-[10px] uppercase tracking-[4px] font-bold">Service Premium 24/7</span>
             </div>
             {/* ✅ Titre réduit sur mobile (text-3xl) et progressif jusqu'à text-8xl sur desktop */}
-            <h1 className="font-serif text-3xl sm:text-5xl md:text-6xl lg:text-8xl text-cream leading-[0.95]">
+            <h1 className="font-serif text-4xl sm:text-5xl md:text-6xl lg:text-8xl text-cream leading-[1.05] sm:leading-[0.95]">
               {t.heroTitle} <br />
               <em className="text-gold italic">{t.heroTitleEm}</em> <br />
               {t.heroTitleEnd}
             </h1>
             {/* ✅ Paragraphe réduit sur mobile pour laisser de la place au formulaire */}
-            <p className="text-cream/70 text-sm sm:text-base md:text-lg lg:text-xl font-light max-w-xl leading-relaxed">
+            <p className="text-cream/80 sm:text-cream/70 text-base md:text-lg lg:text-xl font-light max-w-xl leading-relaxed">
               {t.heroDescription}
             </p>
           </div>
           <div id="#transferts" className="lg:col-span-5 animate-fade-up">
-            <div className="bg-dark-2/40 backdrop-blur-2xl border border-white/10 p-8 shadow-2xl relative">
+            <div className="bg-dark-2/40 backdrop-blur-2xl border border-white/10 p-5 sm:p-8 shadow-2xl relative">
               <div className="absolute -top-1 -right-1 w-12 h-12 border-t border-r border-gold/50"></div>
-              <h2 className="font-serif text-2xl text-cream mb-6 uppercase tracking-wider">{t.bookingTitle}</h2>
+              <h2 className="font-serif text-xl sm:text-2xl text-cream mb-5 sm:mb-6 uppercase tracking-wider">{t.bookingTitle}</h2>
 
               <div className="flex gap-4 mb-8">
                 {['one-way', 'round-trip'].map((type) => (
@@ -568,7 +568,7 @@ function Hero({ t, language }) {
                     key={type}
                     type="button"
                     onClick={() => setTripType(type)}
-                    className={`text-[10px] uppercase tracking-[2px] pb-2 transition-all relative ${
+                    className={`text-[11px] sm:text-[10px] uppercase tracking-[2px] pb-2 transition-all relative ${
                       tripType === type ? 'text-gold' : 'text-cream/40 hover:text-cream'
                     }`}
                   >
@@ -606,21 +606,21 @@ function Hero({ t, language }) {
                   placeholder={t.enterLocation}
                 />
                 
-                <div className={`grid ${tripType === 'round-trip' ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
+                <div className={`grid grid-cols-1 gap-4`}>
                   {/* --- DATE + HEURE DE DÉPART --- */}
                   <div className="space-y-1">
-                    <label className="text-[10px] uppercase tracking-widest text-gold/60 ml-1">{t.departDate}</label>
+                    <label className="text-[11px] sm:text-[10px] uppercase tracking-widest text-gold/60 ml-1">{t.departDate}</label>
                     <div className="grid grid-cols-2 gap-2">
                       <input 
                         type="date" 
                         min={todayStr}
                         value={formData.departDate}
-                        className="w-full bg-white/5 border border-white/10 px-3 py-3 text-sm focus:border-gold outline-none text-cream"
+                        className="w-full min-w-0 h-12 sm:h-auto bg-white/5 border border-white/10 px-3 py-3 text-base sm:text-sm focus:border-gold outline-none text-cream [color-scheme:dark] sm:[color-scheme:normal]"
                         onChange={(e) => setFormData({...formData, departDate: e.target.value, departTime: ''})}
                       />
                       <select
                         value={formData.departTime}
-                        className="w-full bg-white/5 border border-white/10 px-3 py-3 text-sm focus:border-gold outline-none text-cream"
+                        className="w-full min-w-0 h-12 sm:h-auto bg-white/5 border border-white/10 px-3 py-3 text-base sm:text-sm focus:border-gold outline-none text-cream [color-scheme:dark] sm:[color-scheme:normal]"
                         onChange={(e) => setFormData({...formData, departTime: e.target.value})}
                       >
                         <option value="" className="bg-dark-2">--:--</option>
@@ -634,18 +634,18 @@ function Hero({ t, language }) {
                   {/* --- DATE + HEURE DE RETOUR --- */}
                   {tripType === 'round-trip' && (
                     <div className="space-y-1 animate-fade-in">
-                      <label className="text-[10px] uppercase tracking-widest text-gold/60 ml-1">{t.returnDate}</label>
+                      <label className="text-[11px] sm:text-[10px] uppercase tracking-widest text-gold/60 ml-1">{t.returnDate}</label>
                       <div className="grid grid-cols-2 gap-2">
                         <input 
                           type="date" 
                           min={formData.departDate || todayStr}
                           value={formData.returnDate}
-                          className="w-full bg-white/5 border border-white/10 px-3 py-3 text-sm focus:border-gold outline-none text-cream"
+                          className="w-full min-w-0 h-12 sm:h-auto bg-white/5 border border-white/10 px-3 py-3 text-base sm:text-sm focus:border-gold outline-none text-cream [color-scheme:dark] sm:[color-scheme:normal]"
                           onChange={(e) => setFormData({...formData, returnDate: e.target.value, returnTime: ''})}
                         />
                         <select
                           value={formData.returnTime}
-                          className="w-full bg-white/5 border border-white/10 px-3 py-3 text-sm focus:border-gold outline-none text-cream"
+                          className="w-full min-w-0 h-12 sm:h-auto bg-white/5 border border-white/10 px-3 py-3 text-base sm:text-sm focus:border-gold outline-none text-cream [color-scheme:dark] sm:[color-scheme:normal]"
                           onChange={(e) => setFormData({...formData, returnTime: e.target.value})}
                         >
                           <option value="" className="bg-dark-2">--:--</option>
@@ -675,14 +675,14 @@ function Hero({ t, language }) {
 function ServiceCard({ icon, title, description, image, learnMore }) {
   return (
     <div className="group relative overflow-hidden bg-dark-DEFAULT border border-white/5">
-      <div className="h-64 overflow-hidden relative">
+      <div className="h-48 sm:h-64 overflow-hidden relative">
         <img src={image} alt={title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
         <div className="absolute inset-0 bg-dark-DEFAULT/40 group-hover:bg-dark-DEFAULT/20 transition-all"></div>
         <div className="absolute top-6 left-6 w-16 h-16 bg-gold flex items-center justify-center text-dark shadow-xl">
           {icon}
         </div>
       </div>
-      <div className="p-8 space-y-4">
+      <div className="p-6 sm:p-8 space-y-4">
         <h3 className="font-serif text-2xl group-hover:text-gold transition-colors">{title}</h3>
         <p className="text-cream/50 text-sm leading-relaxed">{description}</p>
         <button className="flex items-center gap-2 text-gold text-xs uppercase tracking-widest font-bold pt-4 hover:gap-4 transition-all">
@@ -695,9 +695,9 @@ function ServiceCard({ icon, title, description, image, learnMore }) {
 
 function WhyFeature({ icon, text }) {
   return (
-    <div className="flex flex-col items-center gap-4 p-6 bg-white/5 border border-white/5 hover:border-gold/30 transition-all group">
+    <div className="flex flex-col items-center gap-3 sm:gap-4 p-4 sm:p-6 bg-white/5 border border-white/5 hover:border-gold/30 transition-all group">
       <div className="text-gold group-hover:scale-110 transition-transform">{icon}</div>
-      <span className="text-[11px] uppercase tracking-widest text-center font-medium">{text}</span>
+      <span className="text-[11px] uppercase tracking-wider sm:tracking-widest leading-snug sm:leading-normal text-center font-medium">{text}</span>
     </div>
   );
 }
@@ -719,7 +719,7 @@ function LocationInput({
 }) {
   return (
     <div className="relative space-y-1">
-      <label className="text-[10px] uppercase tracking-widest text-gold/60 ml-1">{label}</label>
+      <label className="text-[11px] sm:text-[10px] uppercase tracking-widest text-gold/60 ml-1">{label}</label>
       <div className="relative">
         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gold/50">{icon}</span>
         <input 
@@ -729,7 +729,7 @@ function LocationInput({
           onFocus={onFocus}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder={placeholder}
-          className="w-full bg-white/5 border border-white/10 px-10 py-3 text-sm focus:border-gold outline-none text-cream" 
+          className="w-full bg-white/5 border border-white/10 px-10 py-3.5 sm:py-3 text-base sm:text-sm focus:border-gold outline-none text-cream" 
         />
       </div>
       {isActive && (
@@ -741,7 +741,7 @@ function LocationInput({
               <div 
                 key={loc} 
                 onClick={() => onSelect(loc)} 
-                className="px-4 py-3 text-xs text-cream/80 hover:bg-gold hover:text-dark cursor-pointer flex items-center gap-3"
+                className="px-4 py-3.5 text-sm sm:py-3 sm:text-xs text-cream/80 hover:bg-gold hover:text-dark cursor-pointer flex items-center gap-3"
               >
                 {loc.toLowerCase().includes('airport') || loc.toLowerCase().includes('aéroport') ? 
                   <Plane size={14} className="text-gold"/> : 

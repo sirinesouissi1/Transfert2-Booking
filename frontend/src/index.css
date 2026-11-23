@@ -75,3 +75,39 @@
 }
 }
 
+/* Mode CLAIR (par défaut quand .dark n'est pas sur <html>) */
+:root {
+  --bg-page: 246 244 239;    /* #f6f4ef : ivoire clair */
+  --bg-card: 255 255 255;    /* #ffffff : cartes blanches */
+  --text-main: 26 29 36;     /* #1a1d24 : texte sombre lisible */
+  --text-muted: 107 114 128; /* #6b7280 */
+  --gold: 168 124 44;        /* #a87c2c : doré contrasté sur clair */
+  --gold-light: 197 160 89;
+  color-scheme: light;
+}
+
+/* Mode SOMBRE ADOUCI (fini le noir pur #000000) */
+.dark {
+  --bg-page: 24 27 34;       /* #181b22 : gris anthracite doux */
+  --bg-card: 35 40 52;       /* #232834 : cartes ardoise */
+  --text-main: 243 239 230;  /* #f3efe6 : texte crème */
+  --text-muted: 156 163 175; /* #9ca3af */
+  --gold: 197 160 89;        /* #c5a059 : doré lumineux */
+  --gold-light: 214 181 116;
+  color-scheme: dark;
+}
+
+/* Adaptation des bordures/états blancs en mode clair sans toucher à SelectVehicle.jsx */
+html:not(.dark) .border-white\/5,
+html:not(.dark) .border-white\/10,
+html:not(.dark) .border-white\/20 {
+  border-color: rgba(26, 29, 36, 0.12);
+}
+
+html:not(.dark) .bg-white\/5 {
+  background-color: rgba(26, 29, 36, 0.06);
+}
+
+html:not(.dark) .text-white\/20 {
+  color: rgba(26, 29, 36, 0.38);
+}

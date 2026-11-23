@@ -1,37 +1,18 @@
-import { useState, useEffect } from 'react';
+import { Sun, Moon } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
 
 export default function ThemeToggle() {
-  const [isLight, setIsLight] = useState(false);
-
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'light') {
-      setIsLight(true);
-      document.documentElement.classList.add('light-theme');
-    } else {
-      setIsLight(false);
-      document.documentElement.classList.remove('light-theme');
-    }
-  }, []);
-
-  const toggleTheme = () => {
-    if (isLight) {
-      document.documentElement.classList.remove('light-theme');
-      localStorage.setItem('theme', 'dark');
-      setIsLight(false);
-    } else {
-      document.documentElement.classList.add('light-theme');
-      localStorage.setItem('theme', 'light');
-      setIsLight(true);
-    }
-  };
+  const { isDark, toggleTheme } = useTheme();
 
   return (
     <button
+      type="button"
       onClick={toggleTheme}
-      className="px-3 py-1 rounded border border-gray-600 text-sm"
+      aria-label={isDark ? 'Activer le mode clair' : 'Activer le mode sombre'}
+      className="inline-flex items-center gap-2 px-3.5 py-2 rounded-sm border border-hairline bg-surface text-ink text-xs font-medium hover:border-gold hover:text-gold transition-colors cursor-pointer"
     >
-      {isLight ? '🌙' : '☀️'}
+      {isDark ? <Sun size={15} className="text-gold" /> : <Moon size={15} className="text-gold" />}
+      <span>{isDark ? 'Clair' : 'Sombre'}</span>
     </button>
   );
 }
