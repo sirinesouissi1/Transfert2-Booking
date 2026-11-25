@@ -205,6 +205,8 @@ export default function Home() {
                 <img 
                   src="https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?auto=format&fit=crop&q=80&w=1000" 
                   alt="Luxe Transport Tunisia" 
+                  width="800" 
+                  height="600" 
                   className="rounded-sm shadow-2xl transition-transform duration-700 group-hover:scale-105"
                 />
                 <div className="absolute -bottom-6 -right-6 bg-gold p-8 hidden md:block">
