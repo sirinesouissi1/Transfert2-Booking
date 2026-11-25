@@ -10,7 +10,7 @@ import {
 import Navbar from '../components/layout/Navbar'; 
 import Footer from '../components/layout/Footer';
 import { useLanguage } from '../context/LanguageContext';
-import { contactAPI } from '../services/api'; // <-- AJOUT DE L'API
+import { contactAPI } from '../services/api';
 
 // ✅ Génère les créneaux horaires toutes les 15 minutes (00:00 → 23:45)
 const TIME_SLOTS = Array.from({ length: 24 * 4 }, (_, i) => {
@@ -36,7 +36,6 @@ const translations = {
     checkPrices: "Vérifier les tarifs",
     enterLocation: "Saisir lieu...",
     noResult: "Aucun résultat",
-    // ✅ Erreurs de validation du formulaire
     errFrom: "Veuillez choisir un lieu de départ dans la liste.",
     errTo: "Veuillez choisir une destination dans la liste.",
     errSameLocation: "Le départ et la destination doivent être différents.",
@@ -102,7 +101,6 @@ const translations = {
     checkPrices: "Check Prices",
     enterLocation: "Enter location...",
     noResult: "No results",
-    // ✅ Form validation errors
     errFrom: "Please choose a departure location from the list.",
     errTo: "Please choose a destination from the list.",
     errSameLocation: "Departure and destination must be different.",
@@ -160,7 +158,6 @@ export default function Home() {
   const { language } = useLanguage();
   const t = translations[language];
 
-  // Gestion du défilement automatique si l'URL contient un # (ex: /#about)
   useEffect(() => {
     if (hash) {
       const element = document.getElementById(hash.replace('#', ''));
@@ -181,23 +178,14 @@ export default function Home() {
         <section className="py-12 bg-dark-DEFAULT px-6 border-b border-white/5">
           <div className="max-w-7xl mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-12 text-center">
-              <Feature 
-                title={t.premiumVehicles}
-                description={t.premiumDesc}
-              />
-              <Feature 
-                title={t.certifiedDrivers}
-                description={t.certifiedDesc}
-              />
-              <Feature 
-                title={t.fixedPrices}
-                description={t.fixedDesc}
-              />
+              <Feature title={t.premiumVehicles} description={t.premiumDesc} />
+              <Feature title={t.certifiedDrivers} description={t.certifiedDesc} />
+              <Feature title={t.fixedPrices} description={t.fixedDesc} />
             </div>
           </div>
         </section>
 
-        {/* 2. SECTION À PROPOS (ID: about) */}
+        {/* 2. SECTION À PROPOS */}
         <section id="about" className="py-16 sm:py-24 bg-dark-DEFAULT px-6 scroll-mt-20">
           <div className="max-w-7xl mx-auto">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 sm:gap-16 items-center">
@@ -220,12 +208,8 @@ export default function Home() {
                 <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl leading-tight">
                   {t.aboutTitle} <br /> <span className="text-gold">{t.aboutTitleGold}</span>
                 </h2>
-                <p className="text-cream/70 leading-relaxed text-lg italic">
-                  {t.aboutP1}
-                </p>
-                <p className="text-cream/60 leading-relaxed">
-                  {t.aboutP2}
-                </p>
+                <p className="text-cream/70 leading-relaxed text-lg italic">{t.aboutP1}</p>
+                <p className="text-cream/60 leading-relaxed">{t.aboutP2}</p>
                 <div className="flex items-center gap-4 text-gold border-l-2 border-gold pl-6 py-2">
                   <p className="text-sm uppercase tracking-widest">{t.aboutFooter}</p>
                 </div>
@@ -280,25 +264,18 @@ export default function Home() {
           </div>
         </section>
 
-        {/* 5. SECTION CONTACT & MAP (ID: contact) */}
+        {/* 5. SECTION CONTACT & MAP */}
         <ContactSection t={t} />
       </main>
 
-      {/* ✅ AJOUT DU BOUTON WHATSAPP FLOTTANT */}
       <WhatsAppButton />
-      
     </div>
   );
 }
 
-// --- COMPOSANT CONTACT (Isolé pour gérer le formulaire) ---
+// --- COMPOSANT CONTACT ---
 function ContactSection({ t }) {
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    subject: '',
-    message: ''
-  });
+  const [formData, setFormData] = useState({ name: '', email: '', subject: '', message: '' });
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState(null);
@@ -316,7 +293,7 @@ function ContactSection({ t }) {
     try {
       await contactAPI.send(formData);
       setSuccess(true);
-      setFormData({ name: '', email: '', subject: '', message: '' }); // Reset
+      setFormData({ name: '', email: '', subject: '', message: '' });
     } catch (err) {
       console.error(err);
       setError(err.response?.data?.message || t.error);
@@ -347,6 +324,7 @@ function ContactSection({ t }) {
               <input 
                 type="text" 
                 name="name"
+                aria-label={t.fullName}
                 value={formData.name}
                 onChange={handleChange}
                 required
@@ -356,6 +334,7 @@ function ContactSection({ t }) {
               <input 
                 type="email" 
                 name="email"
+                aria-label={t.email}
                 value={formData.email}
                 onChange={handleChange}
                 required
@@ -366,6 +345,7 @@ function ContactSection({ t }) {
             <input 
               type="text" 
               name="subject"
+              aria-label={t.subject}
               value={formData.subject}
               onChange={handleChange}
               placeholder={t.subject} 
@@ -374,6 +354,7 @@ function ContactSection({ t }) {
             <textarea 
               rows="4" 
               name="message"
+              aria-label={t.message}
               value={formData.message}
               onChange={handleChange}
               required
@@ -381,7 +362,6 @@ function ContactSection({ t }) {
               className="w-full bg-white/5 border border-white/10 px-4 sm:px-6 py-3.5 sm:py-4 outline-none focus:border-gold transition-colors text-cream resize-none"
             ></textarea>
 
-            {/* Message de succès ou d'erreur */}
             {success && (
               <div className="flex items-center gap-2 text-green-400 text-sm bg-green-500/10 border border-green-500/20 p-3 rounded">
                 <CheckCircle2 size={18} /> {t.sent}
@@ -424,21 +404,14 @@ function ContactSection({ t }) {
   );
 }
 
-// --- SOUS-COMPOSANT HERO (AVEC LOGIQUE D'ICONES DANS LE DROPDOWN) ---
+// --- SOUS-COMPOSANT HERO ---
 function Hero({ t, language }) {
   const navigate = useNavigate();
   const [tripType, setTripType] = useState('one-way');
   const [formData, setFormData] = useState({ 
-    from: '', 
-    to: '', 
-    departDate: '',   // YYYY-MM-DD
-    departTime: '',   // HH:mm
-    returnDate: '',   // YYYY-MM-DD
-    returnTime: '',   // HH:mm
-    passengers: 1
+    from: '', to: '', departDate: '', departTime: '', returnDate: '', returnTime: '', passengers: 1
   });
 
-  // ✅ NOUVEAU : erreurs de validation par champ
   const [errors, setErrors] = useState({});
   const clearError = (...keys) =>
     setErrors((prev) => {
@@ -447,21 +420,16 @@ function Hero({ t, language }) {
       return next;
     });
 
-  // ✅ date minimale (aujourd'hui) pour bloquer les dates passées
   const now = new Date();
-  const minDateTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
-    .toISOString()
-    .slice(0, 16);
-  const todayStr = minDateTime.slice(0, 10); // YYYY-MM-DD
+  const minDateTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  const todayStr = minDateTime.slice(0, 10);
 
-  // ✅ filtre les créneaux si la date choisie est aujourd'hui (retire les heures passées)
   const getAvailableSlots = (selectedDate) => {
     if (selectedDate !== todayStr) return TIME_SLOTS;
-    const nowHHmm = minDateTime.slice(11, 16); // HH:mm actuel
+    const nowHHmm = minDateTime.slice(11, 16);
     return TIME_SLOTS.filter((slot) => slot > nowHHmm);
   };
 
-  // MAJOR CITIES IN TUNISIA (simplified)
   const LOCATIONS = [
     'Tunis', 'Sfax', 'Sousse', 'Kairouan', 'Gabès', 'Bizerte', 'Ariana', 'Gafsa',
     'Nabeul', 'Monastir', 'Mahdia', 'Ben Arous', 'Jendouba', 'El Kef', 'Tozeur',
@@ -470,44 +438,27 @@ function Hero({ t, language }) {
   ];
 
   const airportTranslations = {
-    fr: [
-      'Aéroport Tunis Carthage',
-      'Aéroport Monastir Habib Bourguiba',
-      'Aéroport Enfidha Hammamet',
-      'Aéroport Djerba–Zarzis'
-    ],
-    en: [
-      'Tunis Carthage Airport',
-      'Monastir Habib Bourguiba Airport',
-      'Enfidha Hammamet Airport',
-      'Djerba–Zarzis Airport'
-    ]
+    fr: ['Aéroport Tunis Carthage', 'Aéroport Monastir Habib Bourguiba', 'Aéroport Enfidha Hammamet', 'Aéroport Djerba–Zarzis'],
+    en: ['Tunis Carthage Airport', 'Monastir Habib Bourguiba Airport', 'Enfidha Hammamet Airport', 'Djerba–Zarzis Airport']
   };
 
   const allLocations = [...airportTranslations[language], ...LOCATIONS];
 
   const [activeField, setActiveField] = useState(null);
   const [filteredLocations, setFilteredLocations] = useState(allLocations);
-  // ✅ terme de recherche séparé de la valeur sélectionnée
   const [searchTerm, setSearchTerm] = useState('');
   const dropdownRef = useRef(null);
 
-  // ✅ quand la langue change, on recalcule les options et on reset la recherche
   useEffect(() => {
     setFilteredLocations(allLocations);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [language]);
 
-  // ✅ le filtre dépend de searchTerm (et non plus de formData.from/to)
   useEffect(() => {
     if (!activeField) return;
     const term = searchTerm.toLowerCase().trim();
     setFilteredLocations(
-      term === ''
-        ? allLocations
-        : allLocations.filter(l => l.toLowerCase().includes(term))
+      term === '' ? allLocations : allLocations.filter(l => l.toLowerCase().includes(term))
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm, activeField, language]);
 
   useEffect(() => {
@@ -521,7 +472,6 @@ function Hero({ t, language }) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // ✅ à l'ouverture d'un champ, on vide le searchTerm
   const handleFocus = (field) => {
     setActiveField(field);
     setSearchTerm('');
@@ -529,83 +479,59 @@ function Hero({ t, language }) {
 
   const handleSelectLocation = (location) => {
     setFormData(prev => ({ ...prev, [activeField]: location }));
-    clearError(activeField); // ✅ efface l'erreur du champ choisi (et celle de "même lieu")
+    clearError(activeField);
     if (activeField === 'from') clearError('to');
     setActiveField(null);
     setSearchTerm('');
   };
 
-  // ✅ NOUVEAU : validation complète avant de passer à l'étape suivante
   const validate = () => {
     const e = {};
-
     if (!formData.from) e.from = t.errFrom;
     if (!formData.to) e.to = t.errTo;
-    if (formData.from && formData.to && formData.from === formData.to) {
-      e.to = t.errSameLocation;
-    }
-
+    if (formData.from && formData.to && formData.from === formData.to) e.to = t.errSameLocation;
     if (!formData.departDate) e.departDate = t.errDepartDate;
     if (!formData.departTime) e.departTime = t.errDepartTime;
 
     if (tripType === 'round-trip') {
       if (!formData.returnDate) e.returnDate = t.errReturnDate;
       if (!formData.returnTime) e.returnTime = t.errReturnTime;
-
-      if (
-        formData.departDate && formData.departTime &&
-        formData.returnDate && formData.returnTime
-      ) {
+      if (formData.departDate && formData.departTime && formData.returnDate && formData.returnTime) {
         const dep = `${formData.departDate}T${formData.departTime}`;
         const ret = `${formData.returnDate}T${formData.returnTime}`;
         if (ret <= dep) e.returnDate = t.errReturnBefore;
       }
     }
-
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-
-    // ⛔ Bloque la navigation si un champ est vide / invalide
     if (!validate()) return;
 
-    // ✅ Reconstruire les datetime-local (YYYY-MM-DDTHH:mm) pour l'URL
     const departDateTime = `${formData.departDate}T${formData.departTime}`;
     const returnDateTime = `${formData.returnDate}T${formData.returnTime}`;
 
     const params = new URLSearchParams({
-      from: formData.from,
-      to: formData.to,
-      departDate: departDateTime,
-      tripType: tripType,
-      passengers: formData.passengers.toString()
+      from: formData.from, to: formData.to, departDate: departDateTime,
+      tripType: tripType, passengers: formData.passengers.toString()
     });
 
-    if (tripType === 'round-trip') {
-      params.append('returnDate', returnDateTime);
-    }
+    if (tripType === 'round-trip') params.append('returnDate', returnDateTime);
 
     navigate(`/transferts/vehicules?${params.toString()}`);
   };
 
-  const inputBase =
-    'w-full min-w-0 h-12 sm:h-auto bg-white/5 border px-3 py-3 text-base sm:text-sm outline-none text-cream [color-scheme:dark] sm:[color-scheme:normal]';
-  const borderFor = (key) =>
-    errors[key] ? 'border-red-500/60 focus:border-red-500' : 'border-white/10 focus:border-gold';
+  const inputBase = 'w-full min-w-0 h-12 sm:h-auto bg-white/5 border px-3 py-3 text-base sm:text-sm outline-none text-cream [color-scheme:dark] sm:[color-scheme:normal]';
+  const borderFor = (key) => errors[key] ? 'border-red-500/60 focus:border-red-500' : 'border-white/10 focus:border-gold';
 
   return (
     <section className="relative sm:min-h-screen flex items-center pt-28 pb-12 sm:pt-28 sm:pb-20 overflow-hidden">
       <div className="absolute inset-0 z-0">
         <div className="absolute inset-0 bg-black/60 sm:bg-black/50 z-10" />
         <div className="absolute inset-0 bg-gradient-to-b sm:bg-gradient-to-r from-dark-DEFAULT/70 sm:from-dark-DEFAULT via-dark-DEFAULT/40 to-dark-DEFAULT/80 sm:to-transparent z-10" />
-        <img
-          src="/images/bg.jpg"
-          alt="Tunisia Luxury"
-          className="w-full h-full object-cover scale-105 animate-slow-zoom"
-        />
+        <img src="/images/bg.jpg" alt="Tunisia Luxury" className="w-full h-full object-cover scale-105 animate-slow-zoom" />
       </div>
 
       <div className="relative z-20 max-w-7xl mx-auto px-6 w-full">
@@ -615,18 +541,14 @@ function Hero({ t, language }) {
               <span className="w-8 h-[1px] bg-gold"></span>
               <span className="text-gold text-[10px] uppercase tracking-[4px] font-bold">Service Premium 24/7</span>
             </div>
-            {/* ✅ Titre réduit sur mobile (text-3xl) et progressif jusqu'à text-8xl sur desktop */}
             <h1 className="font-serif text-4xl sm:text-5xl md:text-6xl lg:text-8xl text-cream leading-[1.05] sm:leading-[0.95]">
-              {t.heroTitle} <br />
-              <em className="text-gold italic">{t.heroTitleEm}</em> <br />
-              {t.heroTitleEnd}
+              {t.heroTitle} <br /><em className="text-gold italic">{t.heroTitleEm}</em> <br />{t.heroTitleEnd}
             </h1>
-            {/* ✅ Paragraphe réduit sur mobile pour laisser de la place au formulaire */}
             <p className="text-cream/80 sm:text-cream/70 text-base md:text-lg lg:text-xl font-light max-w-xl leading-relaxed">
               {t.heroDescription}
             </p>
           </div>
-          {/* ✅ FIX : id sans "#" pour que /#transferts fonctionne */}
+          
           <div id="transferts" className="lg:col-span-5 animate-fade-up scroll-mt-28">
             <div className="bg-dark-2/40 backdrop-blur-2xl border border-white/10 p-5 sm:p-8 shadow-2xl relative">
               <div className="absolute -top-1 -right-1 w-12 h-12 border-t border-r border-gold/50"></div>
@@ -637,13 +559,8 @@ function Hero({ t, language }) {
                   <button
                     key={type}
                     type="button"
-                    onClick={() => {
-                      setTripType(type);
-                      clearError('returnDate', 'returnTime');
-                    }}
-                    className={`text-[11px] sm:text-[10px] uppercase tracking-[2px] pb-2 transition-all relative ${
-                      tripType === type ? 'text-gold' : 'text-cream/40 hover:text-cream'
-                    }`}
+                    onClick={() => { setTripType(type); clearError('returnDate', 'returnTime'); }}
+                    className={`text-[11px] sm:text-[10px] uppercase tracking-[2px] pb-2 transition-all relative ${tripType === type ? 'text-gold' : 'text-cream/40 hover:text-cream'}`}
                   >
                     {type === 'one-way' ? t.oneWay : t.roundTrip}
                     {tripType === type && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-gold animate-slide-in"></div>}
@@ -653,43 +570,25 @@ function Hero({ t, language }) {
 
               <form onSubmit={handleSubmit} noValidate className="space-y-4">
                 <LocationInput 
-                  label={t.departure} 
-                  icon={<MapPin size={16}/>} 
-                  value={formData.from} 
-                  onFocus={() => handleFocus('from')}
-                  searchTerm={searchTerm}
-                  onSearchChange={setSearchTerm}
-                  suggestions={filteredLocations} 
-                  onSelect={handleSelectLocation} 
-                  isActive={activeField === 'from'} 
-                  dropdownRef={dropdownRef}
-                  placeholder={t.enterLocation}
-                  noResultText={t.noResult}
-                  error={errors.from}
+                  label={t.departure} icon={<MapPin size={16}/>} value={formData.from} onFocus={() => handleFocus('from')}
+                  searchTerm={searchTerm} onSearchChange={setSearchTerm} suggestions={filteredLocations} onSelect={handleSelectLocation} 
+                  isActive={activeField === 'from'} dropdownRef={dropdownRef} placeholder={t.enterLocation} noResultText={t.noResult} error={errors.from}
                 />
                 <LocationInput 
-                  label={t.destination} 
-                  icon={<MapPin size={16} className="text-gold"/>} 
-                  value={formData.to} 
-                  onFocus={() => handleFocus('to')}
-                  searchTerm={searchTerm}
-                  onSearchChange={setSearchTerm}
-                  suggestions={filteredLocations} 
-                  onSelect={handleSelectLocation} 
-                  isActive={activeField === 'to'} 
-                  dropdownRef={dropdownRef}
-                  placeholder={t.enterLocation}
-                  noResultText={t.noResult}
-                  error={errors.to}
+                  label={t.destination} icon={<MapPin size={16} className="text-gold"/>} value={formData.to} onFocus={() => handleFocus('to')}
+                  searchTerm={searchTerm} onSearchChange={setSearchTerm} suggestions={filteredLocations} onSelect={handleSelectLocation} 
+                  isActive={activeField === 'to'} dropdownRef={dropdownRef} placeholder={t.enterLocation} noResultText={t.noResult} error={errors.to}
                 />
                 
                 <div className={`grid grid-cols-1 gap-4`}>
                   {/* --- DATE + HEURE DE DÉPART --- */}
                   <div className="space-y-1">
-                    <label className="text-[11px] sm:text-[10px] uppercase tracking-widest text-gold/60 ml-1">{t.departDate}</label>
+                    <label htmlFor="departDateInput" className="text-[11px] sm:text-[10px] uppercase tracking-widest text-gold/60 ml-1">{t.departDate}</label>
                     <div className="grid grid-cols-2 gap-2">
                       <input 
+                        id="departDateInput"
                         type="date" 
+                        aria-label={t.departDate}
                         min={todayStr}
                         value={formData.departDate}
                         className={`${inputBase} ${borderFor('departDate')}`}
@@ -699,6 +598,8 @@ function Hero({ t, language }) {
                         }}
                       />
                       <select
+                        id="departTimeInput"
+                        aria-label={t.departDate + " - Heure"}
                         value={formData.departTime}
                         className={`${inputBase} ${borderFor('departTime')}`}
                         onChange={(e) => {
@@ -718,10 +619,12 @@ function Hero({ t, language }) {
                   {/* --- DATE + HEURE DE RETOUR --- */}
                   {tripType === 'round-trip' && (
                     <div className="space-y-1 animate-fade-in">
-                      <label className="text-[11px] sm:text-[10px] uppercase tracking-widest text-gold/60 ml-1">{t.returnDate}</label>
+                      <label htmlFor="returnDateInput" className="text-[11px] sm:text-[10px] uppercase tracking-widest text-gold/60 ml-1">{t.returnDate}</label>
                       <div className="grid grid-cols-2 gap-2">
                         <input 
+                          id="returnDateInput"
                           type="date" 
+                          aria-label={t.returnDate}
                           min={formData.departDate || todayStr}
                           value={formData.returnDate}
                           className={`${inputBase} ${borderFor('returnDate')}`}
@@ -731,6 +634,8 @@ function Hero({ t, language }) {
                           }}
                         />
                         <select
+                          id="returnTimeInput"
+                          aria-label={t.returnDate + " - Heure"}
                           value={formData.returnTime}
                           className={`${inputBase} ${borderFor('returnTime')}`}
                           onChange={(e) => {
@@ -762,8 +667,6 @@ function Hero({ t, language }) {
 }
 
 // --- AUTRES COMPOSANTS DE STRUCTURE ---
-
-// ✅ NOUVEAU : petit message d'erreur sous un champ
 function FieldError({ message }) {
   if (!message) return null;
   return (
@@ -814,26 +717,21 @@ function Feature({ title, description }) {
   );
 }
 
-// LocationInput : searchTerm + onSearchChange + affichage d'erreur
-function LocationInput({ 
-  label, icon, value, onFocus, isActive, suggestions, onSelect, 
-  dropdownRef, placeholder, searchTerm, onSearchChange, noResultText, error
-}) {
+function LocationInput({ label, icon, value, onFocus, isActive, suggestions, onSelect, dropdownRef, placeholder, searchTerm, onSearchChange, noResultText, error }) {
+  const inputId = `location-${label.replace(/\s+/g, '-').toLowerCase()}`;
+  
   return (
     <div className="relative space-y-1">
-      <label className="text-[11px] sm:text-[10px] uppercase tracking-widest text-gold/60 ml-1">{label}</label>
+      <label htmlFor={inputId} className="text-[11px] sm:text-[10px] uppercase tracking-widest text-gold/60 ml-1">{label}</label>
       <div className="relative">
         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gold/50">{icon}</span>
         <input 
-          // Quand le champ est actif, on affiche searchTerm (éditable).
-          // Sinon on affiche la valeur sélectionnée.
+          id={inputId}
           value={isActive ? searchTerm : (value || '')}
           onFocus={onFocus}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder={placeholder}
-          className={`w-full bg-white/5 border px-10 py-3.5 sm:py-3 text-base sm:text-sm outline-none text-cream ${
-            error ? 'border-red-500/60 focus:border-red-500' : 'border-white/10 focus:border-gold'
-          }`}
+          className={`w-full bg-white/5 border px-10 py-3.5 sm:py-3 text-base sm:text-sm outline-none text-cream ${error ? 'border-red-500/60 focus:border-red-500' : 'border-white/10 focus:border-gold'}`}
         />
       </div>
       <FieldError message={error} />
@@ -844,14 +742,10 @@ function LocationInput({
           ) : (
             suggestions.map((loc) => (
               <div 
-                key={loc} 
-                onClick={() => onSelect(loc)} 
+                key={loc} onClick={() => onSelect(loc)} 
                 className="px-4 py-3.5 text-sm sm:py-3 sm:text-xs text-cream/80 hover:bg-gold hover:text-dark cursor-pointer flex items-center gap-3"
               >
-                {loc.toLowerCase().includes('airport') || loc.toLowerCase().includes('aéroport') ? 
-                  <Plane size={14} className="text-gold"/> : 
-                  <MapPin size={14}/>
-                } 
+                {loc.toLowerCase().includes('airport') || loc.toLowerCase().includes('aéroport') ? <Plane size={14} className="text-gold"/> : <MapPin size={14}/>} 
                 {loc}
               </div>
             ))
@@ -862,40 +756,19 @@ function LocationInput({
   );
 }
 
-// --- BOUTON WHATSAPP FLOTTANT ---
 function WhatsAppButton() {
-  // Numéro de téléphone au format international SANS le "+" ni les espaces
   const phoneNumber = "21653078293"; 
-  // Message pré-rempli quand l'utilisateur clique
   const message = encodeURIComponent("Bonjour GoTaxi, je souhaite avoir plus d'informations.");
   const whatsappUrl = `https://wa.me/${phoneNumber}?text=${message}`;
 
   return (
-    <a
-      href={whatsappUrl}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="fixed bottom-6 right-6 z-[9999] group flex items-center justify-center"
-      aria-label="Contactez-nous sur WhatsApp"
-    >
-      {/* Bulle d'information au survol (Desktop) */}
+    <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="fixed bottom-6 right-6 z-[9999] group flex items-center justify-center" aria-label="Contactez-nous sur WhatsApp">
       <div className="absolute right-full mr-4 bg-dark-2 border border-white/10 text-cream text-xs px-3 py-2 rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none whitespace-nowrap hidden md:block">
         Besoin d'aide ? Écrivez-nous !
       </div>
-      
-      {/* Bouton vert avec effet de pulsation */}
       <div className="relative bg-[#25D366] text-white p-4 rounded-full shadow-2xl hover:scale-110 transition-transform duration-300 flex items-center justify-center">
-        {/* Effet de pulsation derrière le bouton */}
         <span className="absolute inset-0 rounded-full bg-[#25D366] animate-ping opacity-30"></span>
-        
-        {/* Logo WhatsApp SVG */}
-        <svg 
-          viewBox="0 0 448 512" 
-          width="28" 
-          height="28" 
-          fill="currentColor"
-          className="relative z-10"
-        >
+        <svg viewBox="0 0 448 512" width="28" height="28" fill="currentColor" className="relative z-10">
           <path d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-157zm-157 341.6c-33.2 0-65.7-8.9-94-25.7l-6.7-4-69.8 18.3L72 359.2l-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1 34.8 34.9 56.2 81.2 56.1 130.5 0 101.8-84.9 184.6-186.6 184.6zm101.2-138.2c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8-3.7 5.6-14.3 18-17.6 21.8-3.2 3.7-6.5 4.2-12 1.4-32.6-16.3-54-29.1-75.5-66-5.7-9.8 5.7-9.1 16.3-30.3 1.8-3.7.9-6.9-.5-9.7-1.4-2.8-12.5-30.1-17.1-41.2-4.5-10.8-9.1-9.3-12.5-9.5-3.2-.2-6.9-.2-10.6-.2-3.7 0-9.7 1.4-14.8 6.9-5.1 5.6-19.4 19-19.4 46.3 0 27.3 19.9 53.7 22.6 57.4 2.8 3.7 39.1 59.7 94.8 83.8 35.2 15.2 49 16.5 66.6 13.9 10.7-1.6 32.8-13.4 37.4-26.4 4.6-13 4.6-24.1 3.2-26.4-1.3-2.5-5-3.9-10.5-6.6z"/>
         </svg>
       </div>
