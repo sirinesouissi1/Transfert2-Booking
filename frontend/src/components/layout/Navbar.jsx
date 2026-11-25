@@ -1,55 +1,46 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { FiMenu, FiX, FiUser, FiLogOut } from 'react-icons/fi';
-import Switch from '@mui/material/Switch';
-import { styled } from '@mui/material/styles';
 import useAuthStore from '../../context/authStore';
 import { useLanguage } from '../../context/LanguageContext';
-// Custom styled Switch for dark theme
-const LanguageSwitch = styled(Switch)(({ theme }) => ({
-  width: 62,
-  height: 34,
-  padding: 7,
-  '& .MuiSwitch-switchBase': {
-    margin: 1,
-    padding: 0,
-    transform: 'translateX(6px)',
-    '&.Mui-checked': {
-      color: '#fff',
-      transform: 'translateX(22px)',
-      '& .MuiSwitch-thumb': {
-        backgroundColor: '#D4AF37',
-      },
-      '& + .MuiSwitch-track': {
-        opacity: 1,
-        backgroundColor: '#1a1a1a',
-        border: '1px solid #D4AF37',
-      },
-    },
-  },
-  '& .MuiSwitch-thumb': {
-    backgroundColor: '#D4AF37',
-    width: 32,
-    height: 32,
-    '&::before': {
-      content: '""',
-      position: 'absolute',
-      width: '100%',
-      height: '100%',
-      left: 0,
-      top: 0,
-      backgroundRepeat: 'no-repeat',
-      backgroundPosition: 'center',
-      backgroundImage: "url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" height=\"20\" width=\"20\" viewBox=\"0 0 20 20\"><path fill=\"%23333\" d=\"M10 3C6.13 3 3 6.13 3 10s3.13 7 7 7 7-3.13 7-7-3.13-7-7-7zm0 12.5c-3.03 0-5.5-2.47-5.5-5.5S6.97 4.5 10 4.5 15.5 6.97 15.5 10 13.03 15.5 10 15.5z\"/><path fill=\"%23D4AF37\" d=\"M10 5.5V14.5C12.49 14.5 14.5 12.49 14.5 10S12.49 5.5 10 5.5z\"/></svg>')",
-    },
-  },
-  '& .MuiSwitch-track': {
-    opacity: 1,
-    backgroundColor: '#2a2a2a',
-    borderRadius: 20 / 2,
-    border: '1px solid rgba(255,255,255,0.1)',
-  },
-}));
+
+// Sélecteur de langue fin et professionnel
+function LanguageToggle({ language, onToggle, wide = false }) {
+  const options = ['fr', 'en'];
+
+  return (
+    <div
+      role="group"
+      aria-label="Language"
+      className="relative inline-flex items-center rounded-full border border-gold/30 bg-white/[0.03] p-[3px]"
+    >
+      {/* Indicateur doré qui glisse */}
+      <span
+        aria-hidden="true"
+        className="absolute left-[3px] top-[3px] bottom-[3px] w-[calc((100%-6px)/2)] rounded-full bg-gold transition-transform duration-300 ease-out"
+        style={{ transform: language === 'en' ? 'translateX(100%)' : 'translateX(0)' }}
+      />
+      {options.map((code) => {
+        const active = language === code;
+        return (
+          <button
+            key={code}
+            type="button"
+            aria-pressed={active}
+            onClick={() => !active && onToggle()}
+            className={`relative z-10 ${
+              wide ? 'w-14 py-2 text-xs' : 'w-10 py-1.5 text-[10px]'
+            } font-semibold uppercase tracking-[2px] transition-colors duration-300 ${
+              active ? 'text-dark' : 'text-cream/60 hover:text-gold'
+            }`}
+          >
+            {code}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 // Translations for Navbar
 const translations = {
@@ -98,14 +89,10 @@ export default function Navbar() {
     navigate('/');
   };
 
-  const handleLanguageToggle = (event) => {
-    toggleLanguage();
-  };
-
   const links = [
-    { to: '/#about',    label: t.about },
+    { to: '/#about',       label: t.about },
     { to: '/#transferts',  label: t.transfers },
-    { to: '/excursions',  label: t.excursions },
+    { to: '/excursions',   label: t.excursions },
     { to: '/#contact',     label: t.contact },
   ];
 
@@ -137,20 +124,8 @@ export default function Navbar() {
 
         {/* Right side (Auth & Language) - Desktop */}
         <div className="hidden md:flex items-center gap-6">
-          {/* Language Switcher with Switch */}
-          <div className="flex items-center gap-3">
-            <span className={`text-[10px] uppercase tracking-wider transition-colors ${language === 'fr' ? 'text-gold' : 'text-cream/40'}`}>
-              FR
-            </span>
-            <LanguageSwitch
-              checked={language === 'en'}
-              onChange={handleLanguageToggle}
-              inputProps={{ 'aria-label': 'language toggle' }}
-            />
-            <span className={`text-[10px] uppercase tracking-wider transition-colors ${language === 'en' ? 'text-gold' : 'text-cream/40'}`}>
-              EN
-            </span>
-          </div>
+          {/* Language Switcher */}
+          <LanguageToggle language={language} onToggle={toggleLanguage} />
 
           {token ? (
             <div className="relative">
@@ -185,8 +160,8 @@ export default function Navbar() {
         </div>
 
         {/* Mobile toggle (Hamburger) */}
-        <button 
-          className="md:hidden text-cream p-2 z-50 relative" 
+        <button
+          className="md:hidden text-cream p-2 z-50 relative"
           onClick={() => setMenuOpen(!menuOpen)}
         >
           {menuOpen ? <FiX size={28} /> : <FiMenu size={28} />}
@@ -195,15 +170,11 @@ export default function Navbar() {
 
       {/* Mobile menu (Plein écran) */}
       <div className={`fixed inset-0 bg-dark-DEFAULT/98 backdrop-blur-xl z-40 transition-all duration-300 flex flex-col pt-24 px-6 pb-8 overflow-y-auto ${menuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
-        
+
         {/* Language Switcher Mobile */}
         <div className="flex items-center justify-between border-b border-white/10 pb-6 mb-6">
           <span className="text-sm uppercase tracking-wider text-cream/60">Langue / Language</span>
-          <div className="flex items-center gap-3">
-            <span className={`text-xs uppercase tracking-wider transition-colors ${language === 'fr' ? 'text-gold' : 'text-cream/40'}`}>FR</span>
-            <LanguageSwitch checked={language === 'en'} onChange={handleLanguageToggle} />
-            <span className={`text-xs uppercase tracking-wider transition-colors ${language === 'en' ? 'text-gold' : 'text-cream/40'}`}>EN</span>
-          </div>
+          <LanguageToggle language={language} onToggle={toggleLanguage} wide />
         </div>
 
         {/* Liens Mobile */}
