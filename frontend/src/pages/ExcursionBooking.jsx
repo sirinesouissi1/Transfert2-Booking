@@ -7,9 +7,119 @@ import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import { excursionAPI } from '../services/api';
 import { excursionBookingAPI } from '../services/api';
-import { getImageUrl } from '../utils/imageUrl';   // ← AJOUTER CETTE LIGNE
+import { getImageUrl } from '../utils/imageUrl';
+import { useLanguage } from '../context/LanguageContext'; // Assurez-vous du bon chemin
 
+// --- DICTIONNAIRE DE TRADUCTION ---
+const bookingTranslations = {
+  en: {
+    loading: "Loading...",
+    bookTitle: "Book your",
+    bookHighlight: "excursion",
+    step1Title: "Booking Options",
+    step2Title: "Personal Information",
+    groupSizeLabel: "Group Size",
+    departureLabel: "Departure Point",
+    totalPrice: "Total Price",
+    perGroup: "PER GROUP",
+    continueBtn: "Continue",
+    backBtn: "← Back",
+    confirmBtn: "Confirm booking",
+    sendingBtn: "Sending...",
+    summaryTitle: "Summary",
+    onRequest: "On request",
+    departurePoint: "Departure Point",
+    groupSize: "Group Size",
+    persons: "persons",
+    preferredDate: "Preferred Date",
+    notDefined: "Not defined",
+    
+    // Group sizes
+    upTo4: "Up to 4 Passengers",
+    upTo6: "Up to 6 Passengers",
+    upTo8: "Up to 8 Passengers",
+    max: "MAX",
 
+    // Form fields
+    firstName: "First Name",
+    lastName: "Last Name",
+    email: "Email Address",
+    phone: "Phone Number",
+    useWhatsapp: "Use WhatsApp",
+    dateLabel: "Preferred Date",
+    customItinerary: "I want a custom itinerary",
+    commentsLabel: "Additional Comments",
+    commentsPlaceholder: "Ex: allergies, preferences...",
+    phonePlaceholder: "00 00 00 00",
+    firstNamePlaceholder: "Enter your first name",
+    lastNamePlaceholder: "Enter your last name",
+    emailPlaceholder: "Enter your email",
+    
+    // Country selector
+    searchCountry: "Search for a country...",
+    noCountry: "No country found",
+
+    // Excursion names translation
+    names: {
+      "Excursion d'une demi-journée berbère à Zaghouan": "Half-day Berber excursion to Zaghouan",
+      "Demi-Journée au Musée du Bardo": "Half-day at the Bardo Museum",
+      "Excursion Sahel : Monastir, Sousse et Port El Kantaoui": "Sahel Excursion: Monastir, Sousse and Port El Kantaoui",
+      "Excursion d'une demi-journée à Sidi Bou Saïd": "Half-day excursion to Sidi Bou Said",
+      "Excursion Archéologique à Dougga et Bulla Regia": "Archaeological Excursion to Dougga and Bulla Regia",
+      "Excursion d'une journée à Tunis Carthage | Sidi Bou Saïd": "Full-day excursion to Tunis Carthage | Sidi Bou Said",
+      "Excursion à la journée à Kairouan et El Jem": "Full-day excursion to Kairouan and El Jem",
+      "Demi-journée au Parc Friguia": "Half-day at Friguia Park"
+    }
+  },
+  fr: {
+    loading: "Chargement...",
+    bookTitle: "Réservez votre",
+    bookHighlight: "excursion",
+    step1Title: "Options de réservation",
+    step2Title: "Informations Personnelles",
+    groupSizeLabel: "Taille du Groupe",
+    departureLabel: "Point de Départ",
+    totalPrice: "Prix total",
+    perGroup: "PAR GROUPE",
+    continueBtn: "Continuer",
+    backBtn: "← Retour",
+    confirmBtn: "Confirmer la réservation",
+    sendingBtn: "Envoi...",
+    summaryTitle: "Récapitulatif",
+    onRequest: "Sur demande",
+    departurePoint: "Point de départ",
+    groupSize: "Taille du groupe",
+    persons: "personnes",
+    preferredDate: "Date préférée",
+    notDefined: "Non définie",
+    
+    upTo4: "Jusqu'à 4 Passagers",
+    upTo6: "Jusqu'à 6 Passagers",
+    upTo8: "Jusqu'à 8 Passagers",
+    max: "MAX",
+
+    firstName: "Prénom",
+    lastName: "Nom",
+    email: "Adresse Email",
+    phone: "Numéro de téléphone",
+    useWhatsapp: "Utiliser WhatsApp",
+    dateLabel: "Date Préférée",
+    customItinerary: "Je veux un itinéraire personnalisé",
+    commentsLabel: "Commentaires Supplémentaires",
+    commentsPlaceholder: "Ex: allergies, préférences...",
+    phonePlaceholder: "00 00 00 00",
+    firstNamePlaceholder: "Entrez votre prénom",
+    lastNamePlaceholder: "Entrez votre nom",
+    emailPlaceholder: "Entrez votre email",
+    
+    searchCountry: "Rechercher un pays...",
+    noCountry: "Aucun pays trouvé",
+    
+    names: {}
+  }
+};
+
+// Liste complète des pays (copiée depuis BookingDetails)
 // Liste complète des pays (copiée depuis BookingDetails)
 const ALL_COUNTRIES = [
     { name: "Afghanistan", code: "+93", flag: "🇦🇫" },
@@ -258,17 +368,14 @@ const ALL_COUNTRIES = [
     { name: "Zimbabwe", code: "+263", flag: "🇿🇼" }
 ].sort((a, b) => a.name.localeCompare(b.name));
 
-const GROUP_SIZES = [
-  { value: '4', label: "Jusqu'à 4 Passagers", max: 'MAX 4' },
-  { value: '6', label: "Jusqu'à 6 Passagers", max: 'MAX 6' },
-  { value: '8', label: "Jusqu'à 8 Passagers", max: 'MAX 8' }
-];
-
 const DEPARTURE_POINTS = ['Hammamet', 'Sousse', 'Tunis'];
 
 export default function ExcursionBooking() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { language } = useLanguage();
+  const t = bookingTranslations[language] || bookingTranslations.fr;
+
   const [excursion, setExcursion] = useState(null);
   const [loading, setLoading] = useState(true);
   const [step, setStep] = useState(1);
@@ -289,6 +396,13 @@ export default function ExcursionBooking() {
   const [submitting, setSubmitting] = useState(false);
   const [price, setPrice] = useState(0);
 
+  // Configuration des tailles de groupe (traduite dynamiquement)
+  const GROUP_SIZES = [
+    { value: '4', label: t.upTo4, max: `${t.max} 4` },
+    { value: '6', label: t.upTo6, max: `${t.max} 6` },
+    { value: '8', label: t.upTo8, max: `${t.max} 8` }
+  ];
+
   useEffect(() => {
     const fetchExcursion = async () => {
       try {
@@ -305,12 +419,9 @@ export default function ExcursionBooking() {
     fetchExcursion();
   }, [id]);
 
-  // Mise à jour du prix lorsque la taille du groupe change
-  // Calcul du prix selon le point de départ ET la taille du groupe
   useEffect(() => {
     if (!excursion) return;
 
-    // 1. Cherche le prix dans departurePrices (nouveau système)
     const rawDeparturePrices = excursion.departurePrices || {};
     const departurePrices =
       rawDeparturePrices instanceof Map
@@ -325,7 +436,6 @@ export default function ExcursionBooking() {
       return;
     }
 
-    // 2. Fallback : ancien groupPrices
     const rawGroupPrices = excursion.groupPrices || {};
     const groupPrices =
       rawGroupPrices instanceof Map
@@ -338,7 +448,6 @@ export default function ExcursionBooking() {
       return;
     }
 
-    // 3. Sinon → 0 (affichera "Sur demande")
     setPrice(0);
   }, [bookingData.groupSize, bookingData.departurePoint, excursion]);
 
@@ -368,26 +477,32 @@ export default function ExcursionBooking() {
       const payload = {
         ...bookingData,
         phone: `${bookingData.prefix.code} ${bookingData.phone}`,
-        prefix: undefined // on ne garde que le numéro complet
+        prefix: undefined
       };
       const response = await excursionBookingAPI.create(payload);
       if (response.data?.success) {
         navigate(`/excursions/booking-confirmation/${response.data.booking._id}`);
       } else {
-        alert('Erreur lors de la réservation');
+        alert(language === 'en' ? 'Error during booking' : 'Erreur lors de la réservation');
       }
     } catch (error) {
       console.error('Erreur soumission', error);
-      alert('Erreur réseau');
+      alert(language === 'en' ? 'Network error' : 'Erreur réseau');
     } finally {
       setSubmitting(false);
     }
   };
 
+  // Fonction pour traduire le nom de l'excursion
+  const translateExcursionName = (name) => {
+    if (language === 'en' && t.names && t.names[name]) return t.names[name];
+    return name;
+  };
+
   if (loading) {
     return (
       <div className="bg-dark-DEFAULT min-h-screen flex items-center justify-center">
-        <div className="text-gold text-sm uppercase tracking-widest">Chargement...</div>
+        <div className="text-gold text-sm uppercase tracking-widest">{t.loading}</div>
       </div>
     );
   }
@@ -399,7 +514,7 @@ export default function ExcursionBooking() {
         {/* Stepper */}
         <div className="flex flex-col items-center mb-12 animate-fade-in">
           <h1 className="font-serif text-4xl md:text-5xl mb-8 text-center tracking-tight">
-            Réservez votre <em className="text-gold italic underline decoration-gold/30 underline-offset-8">excursion</em>
+            {t.bookTitle} <em className="text-gold italic underline decoration-gold/30 underline-offset-8">{t.bookHighlight}</em>
           </h1>
           <div className="flex items-center justify-center w-full max-w-2xl px-4">
             <StepIcon number="1" active={step === 1} completed={step > 1} />
@@ -420,6 +535,8 @@ export default function ExcursionBooking() {
                 onDepartureSelect={handleDepartureSelect}
                 onNext={handleNext}
                 price={price}
+                groupSizes={GROUP_SIZES}
+                t={t}
               />
             )}
             {step === 2 && (
@@ -431,6 +548,7 @@ export default function ExcursionBooking() {
                 onSubmit={handleSubmit}
                 submitting={submitting}
                 price={price}
+                t={t}
               />
             )}
           </div>
@@ -438,7 +556,7 @@ export default function ExcursionBooking() {
           {/* Colonne de droite : récapitulatif */}
           <div className="lg:col-span-4 animate-fade-in delay-200">
             <div className="bg-dark-2/40 backdrop-blur-xl border border-white/10 p-6 rounded-xs sticky top-32">
-              <h3 className="font-serif text-xl mb-6 border-b border-white/5 pb-4 text-gold">Récapitulatif</h3>
+              <h3 className="font-serif text-xl mb-6 border-b border-white/5 pb-4 text-gold">{t.summaryTitle}</h3>
               <div className="mb-8 text-center bg-white/5 p-4 rounded-xs">
              <img
                 src={getImageUrl(excursion?.coverImage)}
@@ -449,32 +567,32 @@ export default function ExcursionBooking() {
                 }}
                 className="w-40 mx-auto mb-4 drop-shadow-[0_20px_20px_rgba(0,0,0,0.5)]"
               />
-                <p className="font-serif text-xl text-white">{excursion?.name}</p>
+                <p className="font-serif text-xl text-white">{translateExcursionName(excursion?.name)}</p>
               </div>
 
                   <div className="bg-gold text-dark p-4 flex justify-between items-center font-bold mb-8">
-                  <span className="text-[10px] uppercase tracking-widest">Prix Total</span>
+                  <span className="text-[10px] uppercase tracking-widest">{t.totalPrice}</span>
                   <span className="text-2xl font-serif">
-                    {price > 0 ? `€${price}` : 'Sur demande'}
+                    {price > 0 ? `€${price}` : t.onRequest}
                   </span>
                 </div>
 
               <div className="space-y-6">
                 <JourneyStep
-                  label="Point de départ"
+                  label={t.departurePoint}
                   value={bookingData.departurePoint}
                   icon={<MapPin size={14} />}
                   isLast={false}
                 />
                 <JourneyStep
-                  label="Taille du groupe"
-                  value={`${bookingData.groupSize} personnes`}
+                  label={t.groupSize}
+                  value={`${bookingData.groupSize} ${t.persons}`}
                   icon={<User size={14} />}
                   isLast={false}
                 />
                 <JourneyStep
-                  label="Date préférée"
-                  value={bookingData.preferredDate || 'Non définie'}
+                  label={t.preferredDate}
+                  value={bookingData.preferredDate || t.notDefined}
                   icon={<Calendar size={14} />}
                   isLast={true}
                 />
@@ -501,19 +619,19 @@ function StepIcon({ number, active, completed }) {
   );
 }
 
-function Step1({ bookingData, onGroupSizeSelect, onDepartureSelect, onNext, price }) {
+function Step1({ bookingData, onGroupSizeSelect, onDepartureSelect, onNext, price, groupSizes, t }) {
   return (
     <div className="bg-dark-2/40 backdrop-blur-xl border border-white/10 p-8 rounded-xs">
       <h2 className="font-serif text-2xl mb-8 flex items-center gap-3 border-b border-white/5 pb-4">
-        <User className="text-gold" size={24} /> Options de réservation
+        <User className="text-gold" size={24} /> {t.step1Title}
       </h2>
 
       <div className="mb-8">
         <label className="text-[10px] uppercase tracking-[3px] text-gold/60 ml-1 mb-2 block">
-          Taille du Groupe
+          {t.groupSizeLabel}
         </label>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {GROUP_SIZES.map((size) => (
+          {groupSizes.map((size) => (
             <button
               key={size.value}
               type="button"
@@ -533,7 +651,7 @@ function Step1({ bookingData, onGroupSizeSelect, onDepartureSelect, onNext, pric
 
       <div className="mb-8">
         <label className="text-[10px] uppercase tracking-[3px] text-gold/60 ml-1 mb-2 block">
-          Point de Départ
+          {t.departureLabel}
         </label>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {DEPARTURE_POINTS.map((point) => (
@@ -555,10 +673,10 @@ function Step1({ bookingData, onGroupSizeSelect, onDepartureSelect, onNext, pric
 
       <div className="flex items-center justify-between pt-6 border-t border-white/5">
         <div>
-          <div className="text-muted text-xs uppercase tracking-wider">Prix total</div>
+          <div className="text-muted text-xs uppercase tracking-wider">{t.totalPrice}</div>
           <div className="font-serif text-4xl font-light text-gold mt-1">
             €{price}
-            <span className="text-muted text-sm ml-2">PAR GROUPE</span>
+            <span className="text-muted text-sm ml-2">{t.perGroup}</span>
           </div>
         </div>
         <button
@@ -567,7 +685,7 @@ function Step1({ bookingData, onGroupSizeSelect, onDepartureSelect, onNext, pric
           className="group relative flex items-center justify-center gap-4 px-12 py-4 bg-gold text-dark uppercase text-xs tracking-[4px] font-bold transition-all overflow-hidden"
         >
           <span className="relative z-10 flex items-center gap-3 italic">
-            Continuer <ArrowRight size={18} />
+            {t.continueBtn} <ArrowRight size={18} />
           </span>
           <div className="absolute inset-0 bg-white translate-y-full group-hover:translate-y-0 transition-transform duration-500"></div>
         </button>
@@ -576,7 +694,7 @@ function Step1({ bookingData, onGroupSizeSelect, onDepartureSelect, onNext, pric
   );
 }
 
-function Step2({ excursion, bookingData, onChange, onBack, onSubmit, submitting, price }) {
+function Step2({ excursion, bookingData, onChange, onBack, onSubmit, submitting, price, t }) {
   const [prefix, setPrefix] = useState(bookingData.prefix);
 
   const handlePrefixChange = (country) => {
@@ -584,48 +702,58 @@ function Step2({ excursion, bookingData, onChange, onBack, onSubmit, submitting,
     onChange({ target: { name: 'prefix', value: country } });
   };
 
+  // 1. Calcul de la date d'aujourd'hui (format YYYY-MM-DD sécurisé pour le fuseau horaire local)
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  const minDate = `${year}-${month}-${day}`;
+
   return (
     <div className="bg-dark-2/40 backdrop-blur-xl border border-white/10 p-8 rounded-xs">
       <h2 className="font-serif text-2xl mb-8 flex items-center gap-3 border-b border-white/5 pb-4">
-        <User className="text-gold" size={24} /> Informations Personnelles
+        <User className="text-gold" size={24} /> {t.step2Title}
       </h2>
 
       <form onSubmit={onSubmit} className="space-y-6">
         {/* Nom complet */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <FormInput
-            label="Prénom"
+            label={t.firstName}
             name="firstName"
             value={bookingData.firstName}
             onChange={onChange}
             required
+            placeholder={t.firstNamePlaceholder}
           />
           <FormInput
-            label="Nom"
+            label={t.lastName}
             name="lastName"
             value={bookingData.lastName}
             onChange={onChange}
             required
+            placeholder={t.lastNamePlaceholder}
           />
         </div>
 
         {/* Email */}
         <FormInput
-          label="Adresse Email"
+          label={t.email}
           name="email"
           type="email"
           value={bookingData.email}
           onChange={onChange}
           required
+          placeholder={t.emailPlaceholder}
         />
 
         {/* Téléphone avec sélecteur de pays */}
         <div className="space-y-2">
           <label className="text-[10px] uppercase tracking-[3px] text-gold/60 ml-1 block">
-            Numéro de téléphone
+            {t.phone}
           </label>
           <div className="flex gap-2 h-12">
-            <GlobalCountrySelect selected={prefix} onSelect={handlePrefixChange} />
+            <GlobalCountrySelect selected={prefix} onSelect={handlePrefixChange} t={t} />
             <input
               type="tel"
               name="phone"
@@ -633,7 +761,7 @@ function Step2({ excursion, bookingData, onChange, onBack, onSubmit, submitting,
               onChange={onChange}
               required
               className="flex-1 bg-white/5 border border-white/10 px-4 py-3 text-sm focus:border-gold outline-none text-cream"
-              placeholder="00 00 00 00"
+              placeholder={t.phonePlaceholder}
             />
           </div>
           <div className="flex items-center gap-2 mt-2">
@@ -645,18 +773,19 @@ function Step2({ excursion, bookingData, onChange, onBack, onSubmit, submitting,
               onChange={onChange}
               className="accent-gold"
             />
-            <label htmlFor="whatsapp" className="text-sm text-muted">Utiliser WhatsApp</label>
+            <label htmlFor="whatsapp" className="text-sm text-muted">{t.useWhatsapp}</label>
           </div>
         </div>
 
         {/* Date préférée */}
-        <FormInput
-          label="Date Préférée"
+      <FormInput
+          label={t.dateLabel}
           name="preferredDate"
           type="date"
           value={bookingData.preferredDate}
           onChange={onChange}
           required
+          min={minDate} // 2. On passe la date minimum ici
         />
 
         {/* Itinéraire personnalisé */}
@@ -670,14 +799,14 @@ function Step2({ excursion, bookingData, onChange, onBack, onSubmit, submitting,
             className="accent-gold"
           />
           <label htmlFor="customItinerary" className="text-sm text-muted">
-            Je veux un itinéraire personnalisé
+            {t.customItinerary}
           </label>
         </div>
 
         {/* Commentaires */}
         <div className="space-y-2">
           <label className="text-[10px] uppercase tracking-[3px] text-gold/60 ml-1 block">
-            Commentaires Supplémentaires
+            {t.commentsLabel}
           </label>
           <textarea
             name="specialRequests"
@@ -685,7 +814,7 @@ function Step2({ excursion, bookingData, onChange, onBack, onSubmit, submitting,
             onChange={onChange}
             rows="3"
             className="w-full bg-white/5 border border-white/10 p-4 text-sm focus:border-gold outline-none text-cream resize-none"
-            placeholder="Ex: allergies, préférences..."
+            placeholder={t.commentsPlaceholder}
           />
         </div>
 
@@ -696,7 +825,7 @@ function Step2({ excursion, bookingData, onChange, onBack, onSubmit, submitting,
             onClick={onBack}
             className="text-muted hover:text-gold transition-colors text-sm uppercase tracking-wider"
           >
-            ← Retour
+            {t.backBtn}
           </button>
           <button
             type="submit"
@@ -704,7 +833,7 @@ function Step2({ excursion, bookingData, onChange, onBack, onSubmit, submitting,
             className="group relative flex items-center justify-center gap-4 px-12 py-4 bg-gold text-dark uppercase text-xs tracking-[4px] font-bold transition-all overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <span className="relative z-10 flex items-center gap-3 italic">
-              {submitting ? 'Envoi...' : 'Confirmer la réservation'}
+              {submitting ? t.sendingBtn : t.confirmBtn}
               {!submitting && <ArrowRight size={18} />}
             </span>
             {!submitting && (
@@ -717,8 +846,8 @@ function Step2({ excursion, bookingData, onChange, onBack, onSubmit, submitting,
   );
 }
 
-// Composant de sélecteur de pays global (identique à BookingDetails)
-function GlobalCountrySelect({ selected, onSelect }) {
+// Composant de sélecteur de pays global
+function GlobalCountrySelect({ selected, onSelect, t }) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
   const dropdownRef = useRef(null);
@@ -755,7 +884,7 @@ function GlobalCountrySelect({ selected, onSelect }) {
               <input
                 autoFocus
                 type="text"
-                placeholder="Rechercher un pays..."
+                placeholder={t.searchCountry}
                 className="w-full bg-white/5 border border-white/10 pl-9 pr-3 py-2 text-[11px] outline-none focus:border-gold text-cream"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -776,7 +905,7 @@ function GlobalCountrySelect({ selected, onSelect }) {
                 <span className="text-[10px] font-bold opacity-60 italic">{c.code}</span>
               </div>
             )) : (
-              <div className="p-4 text-center text-xs text-cream/20 italic">Aucun pays trouvé</div>
+              <div className="p-4 text-center text-xs text-cream/20 italic">{t.noCountry}</div>
             )}
           </div>
         </div>
@@ -786,7 +915,7 @@ function GlobalCountrySelect({ selected, onSelect }) {
 }
 
 // Composant d'input réutilisable
-function FormInput({ label, name, type = "text", value, onChange, required = false }) {
+function FormInput({ label, name, type = "text", value, onChange, required = false, placeholder, min }) {
   return (
     <div className="space-y-2">
       <label className="text-[10px] uppercase tracking-[3px] text-gold/60 ml-1 block">
@@ -798,8 +927,10 @@ function FormInput({ label, name, type = "text", value, onChange, required = fal
         value={value}
         onChange={onChange}
         required={required}
-        className="w-full bg-white/5 border border-white/10 px-4 py-3 text-sm focus:border-gold outline-none text-cream transition-all"
-        placeholder={`Entrez votre ${label.toLowerCase()}`}
+        min={min} // <-- AJOUTER CETTE LIGNE
+        // Ajout de [color-scheme:dark] pour l'icône du calendrier
+        className="w-full bg-white/5 border border-white/10 px-4 py-3 text-sm focus:border-gold outline-none text-cream transition-all [color-scheme:dark]"
+        placeholder={placeholder || `Entrez votre ${label.toLowerCase()}`}
       />
     </div>
   );
