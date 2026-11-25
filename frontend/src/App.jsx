@@ -39,7 +39,7 @@ import AdminExcursionBookings from './pages/admin/AdminExcursionBookings';
 // Guards
 const PrivateRoute = ({ children }) => {
   const token = useAuthStore((s) => s.token);
-  return token ? children : <Navigate to="/login" replace />;
+  return token ? children : <Navigate to="/admin/login" replace />;
 };
 
 const AdminRoute = ({ children }) => {
