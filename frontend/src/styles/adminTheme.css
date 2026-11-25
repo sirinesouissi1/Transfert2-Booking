@@ -1,0 +1,64 @@
+/* ============ Thème sombre (par défaut) ============ */
+.admin-dark { color-scheme: dark; }
+
+/* ============ Thème clair ============ */
+.admin-light { color-scheme: light; }
+
+/* Fonds */
+.admin-light.bg-\[\#1F1F2E\],
+.admin-light .bg-\[\#1F1F2E\] { background-color: #F3F4F6; }
+.admin-light .bg-\[\#2A2A3C\] { background-color: #FFFFFF; }
+.admin-light .bg-\[\#35354A\],
+.admin-light .bg-dark-3 { background-color: #F1F3F7; }
+.admin-light .bg-\[\#35354A\]\/50 { background-color: rgba(241, 243, 247, 0.7); }
+
+/* Dégradé sur les cartes véhicules */
+.admin-light .from-\[\#2A2A3C\]\/80 {
+  --tw-gradient-from: rgba(255, 255, 255, 0.85) var(--tw-gradient-from-position);
+  --tw-gradient-to: rgba(255, 255, 255, 0) var(--tw-gradient-to-position);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+
+/* Fonds translucides blancs -> noirs translucides */
+.admin-light .bg-white\/5 { background-color: rgba(0, 0, 0, 0.04); }
+.admin-light .bg-white\/10 { background-color: rgba(0, 0, 0, 0.07); }
+.admin-light .hover\:bg-white\/5:hover { background-color: rgba(0, 0, 0, 0.04); }
+.admin-light .hover\:bg-white\/10:hover { background-color: rgba(0, 0, 0, 0.07); }
+.admin-light .hover\:bg-white\/15:hover { background-color: rgba(0, 0, 0, 0.1); }
+
+/* Bordures */
+.admin-light .border-white\/5  { border-color: rgba(0, 0, 0, 0.06); }
+.admin-light .border-white\/10 { border-color: rgba(0, 0, 0, 0.1); }
+.admin-light .border-white\/15 { border-color: rgba(0, 0, 0, 0.14); }
+.admin-light .border-white\/20 { border-color: rgba(0, 0, 0, 0.2); }
+.admin-light .divide-white\/5 > :not([hidden]) ~ :not([hidden]) { border-color: rgba(0, 0, 0, 0.06); }
+
+/* Textes */
+.admin-light .text-cream { color: #1F2937; }
+.admin-light .text-cream\/70 { color: rgba(31, 41, 55, 0.7); }
+.admin-light .text-cream\/80 { color: rgba(31, 41, 55, 0.8); }
+.admin-light .text-cream\/90 { color: rgba(31, 41, 55, 0.9); }
+.admin-light .hover\:text-cream:hover { color: #111827; }
+.admin-light .text-muted { color: #6B7280; }
+.admin-light .text-gold { color: #9A7B1E; }
+.admin-light .hover\:text-gold:hover { color: #9A7B1E; }
+.admin-light .placeholder-muted\/40::placeholder { color: rgba(107, 114, 128, 0.6); }
+
+/* Couleurs de statut (plus foncées pour rester lisibles sur fond clair) */
+.admin-light .text-yellow-400 { color: #B7791F; }
+.admin-light .text-green-400  { color: #15803D; }
+.admin-light .text-blue-400   { color: #1D4ED8; }
+.admin-light .text-red-400    { color: #DC2626; }
+.admin-light .text-purple-400 { color: #7E22CE; }
+.admin-light .hover\:text-green-300:hover { color: #166534; }
+.admin-light .hover\:text-red-300:hover   { color: #B91C1C; }
+
+/* Les boutons dorés gardent leur texte foncé */
+.admin-light .bg-gold { color: #1F1F2E; }
+
+/* Transition douce lors du changement de thème */
+.admin-light, .admin-dark,
+.admin-light *, .admin-dark * {
+  transition-property: background-color, border-color, color, fill, stroke;
+  transition-duration: 150ms;
+}

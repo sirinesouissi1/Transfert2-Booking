@@ -1,7 +1,7 @@
 // pages/formulaire/SelectVehicle.jsx
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { MapPin, Users, Calendar, ArrowRight, Check, Clock, Luggage, Snowflake, Plane } from 'lucide-react';
+import { MapPin, Users, Calendar, ArrowRight, Check, Clock, Luggage, Snowflake, Plane, Briefcase, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import { useLanguage } from '../context/LanguageContext';
@@ -18,11 +18,17 @@ const translations = {
     tripType: "Type de trajet", oneWay: "Aller simple", roundTrip: "Aller-retour",
     notSpecified: "Non spécifiée", seats: "places",
     luggage: "Bagages", ac: "Clim.",
-    totalPrice: "Tarif tout inclus", priceOnRequest: "Prix sur demande",
-    continueBtn: "Continuer", errorLoading: "Erreur lors du chargement des véhicules.",
+    totalPrice: "Prix fixe tout compris", priceOnRequest: "Prix sur demande",
+    continueBtn: "Réserver", errorLoading: "Erreur lors du chargement des véhicules.",
     routeInfo: "Itinéraire du transfert",
     openMaps: "Ouvrir dans Google Maps",
-    tripDetails: "Détails du Trajet"
+    tripDetails: "Détails du Trajet",
+    vehiclesAvailable: "véhicules disponibles",
+    duration: "Durée estimée",
+    freeWait: "Temps d'attente offert",
+    flightTrack: "Suivi de vol",
+    tolls: "Péages inclus",
+    cancellation: "Annulation gratuite"
   },
   en: {
     loading: "Loading vehicles...",
@@ -33,11 +39,17 @@ const translations = {
     tripType: "Trip Type", oneWay: "One way", roundTrip: "Round trip",
     notSpecified: "Not specified", seats: "seats",
     luggage: "Luggage", ac: "A/C",
-    totalPrice: "All-inclusive price", priceOnRequest: "Price on request",
-    continueBtn: "Continue", errorLoading: "Error loading vehicles.",
+    totalPrice: "Fixed all-inclusive price", priceOnRequest: "Price on request",
+    continueBtn: "Book", errorLoading: "Error loading vehicles.",
     routeInfo: "Transfer route",
     openMaps: "Open in Google Maps",
-    tripDetails: "Trip Details"
+    tripDetails: "Trip Details",
+    vehiclesAvailable: "vehicles available",
+    duration: "Estimated duration",
+    freeWait: "Free waiting time",
+    flightTrack: "Flight tracking",
+    tolls: "Tolls included",
+    cancellation: "Free cancellation"
   }
 };
 
@@ -79,7 +91,6 @@ export default function SelectVehicle() {
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedId, setSelectedId] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -107,9 +118,9 @@ export default function SelectVehicle() {
     return () => { cancelled = true; };
   }, [tripData.from, tripData.to, tripData.tripType, t.errorLoading]);
 
-  const handleNext = () => {
-    if (!selectedId) return;
-    const vehicle = vehicles.find((v) => v._id === selectedId);
+  // ✅ Modification : On passe le véhicule en paramètre directement lors du clic sur "Réserver"
+  const handleNext = (vehicle) => {
+    if (!vehicle) return;
     const normalizedTripType = normalizeTripType(tripData.tripType);
 
     const queryParams = new URLSearchParams({
@@ -132,7 +143,7 @@ export default function SelectVehicle() {
   if (loading) {
     return (
       <div className="bg-dark-DEFAULT min-h-screen flex items-center justify-center">
-        <div className="text-gold text-sm uppercase tracking-widest">{t.loading}</div>
+        <div className="text-gold text-sm uppercase tracking-widest animate-pulse">{t.loading}</div>
       </div>
     );
   }
@@ -152,7 +163,7 @@ export default function SelectVehicle() {
       <main className="max-w-7xl mx-auto px-6 pt-32 pb-20">
         
         {/* Stepper */}
-        <div className="flex flex-col items-center mb-10 animate-fade-in">
+        <div className="flex flex-col items-center mb-12 animate-fade-in">
           <h1 className="font-serif text-4xl md:text-5xl mb-8 text-center tracking-tight">
             {t.title} <em className="text-gold italic underline decoration-gold/30 underline-offset-8">{t.titleEm}</em>
           </h1>
@@ -165,11 +176,21 @@ export default function SelectVehicle() {
           </div>
         </div>
 
-        {/* ✅ NOUVELLE DISPOSITION : 2 Colonnes */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
           {/* Colonne GAUCHE : Liste des véhicules (8/12) */}
           <div className="lg:col-span-8 animate-fade-up">
+            
+            {/* Header de la liste */}
+            <div className="flex justify-between items-end mb-6 border-b border-white/10 pb-4">
+              <p className="text-sm text-cream/70">
+                <strong className="text-cream">{vehicles.length}</strong> {t.vehiclesAvailable}
+              </p>
+              <p className="text-[10px] text-gold uppercase tracking-wider flex items-center gap-1">
+                <CheckCircle2 size={12} /> {t.totalPrice}
+              </p>
+            </div>
+
             {error && (
               <div className="mb-8 p-4 bg-red-500/10 border border-red-500/30 text-red-400 rounded text-sm">
                 {error}
@@ -179,93 +200,73 @@ export default function SelectVehicle() {
             {vehicles.length === 0 && !error ? (
               <p className="text-center text-muted italic py-12">{t.priceOnRequest}</p>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="flex flex-col gap-4">
                 {vehicles.map((car) => (
                   <div
                     key={car._id}
-                    onClick={() => setSelectedId(car._id)}
-                    className={`group relative bg-dark-2/40 backdrop-blur-md border transition-all duration-500 p-6 flex flex-col cursor-pointer ${
-                      selectedId === car._id
-                        ? 'border-gold shadow-[0_0_40px_rgba(197,160,89,0.1)] translate-y-[-8px]'
-                        : 'border-white/10 hover:border-gold/30 hover:translate-y-[-4px]'
-                    }`}
+                    className="group bg-dark-2/40 backdrop-blur-md border border-white/10 hover:border-gold/30 transition-all duration-300 rounded-lg p-4 sm:p-6 flex flex-col md:flex-row items-center gap-6"
                   >
-                    <div className={`absolute top-5 right-5 w-6 h-6 rounded-full border flex items-center justify-center transition-all ${
-                      selectedId === car._id ? 'bg-gold border-gold' : 'border-white/20'
-                    }`}>
-                      {selectedId === car._id && <Check size={14} className="text-dark font-bold" />}
+                    {/* Image à gauche */}
+                    <div className="w-full md:w-48 lg:w-64 h-32 flex-shrink-0 flex items-center justify-center bg-black/20 rounded-md p-2">
+                      <img 
+                        src={car.image} 
+                        alt={car.name} 
+                        className="w-full h-full object-contain filter drop-shadow-xl group-hover:scale-105 transition-transform duration-500" 
+                      />
                     </div>
 
-                    <div className="mb-4">
-                      <h3 className="font-serif text-2xl mb-1 truncate pr-8">{car.name}</h3>
-                    </div>
-
-                    <div className="relative h-36 mb-6 transition-transform duration-700 group-hover:scale-110">
-                      <img src={car.image} alt={car.name} className="w-full h-full object-contain filter drop-shadow-2xl" />
-                    </div>
-
-                    <div className="mt-auto space-y-5">
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-cream/60 border-b border-white/5 pb-4">
-                        <span className="flex items-center gap-1.5">
-                          <Users size={14} className="text-gold" /> {car.capacity} {t.seats}
-                        </span>
+                    {/* Infos au milieu */}
+                    <div className="flex-1 w-full text-center md:text-left">
+                      <h3 className="font-serif text-2xl mb-2 text-cream">{car.name}</h3>
+                      
+                      <div className="flex flex-wrap justify-center md:justify-start items-center gap-x-4 gap-y-2 text-xs text-cream/70 mb-4">
+                        <span className="flex items-center gap-1.5"><Users size={14} className="text-gold" /> {car.capacity} {t.passengers}</span>
                         {Number(car.luggage) > 0 && (
-                          <span className="flex items-center gap-1.5">
-                            <Luggage size={14} className="text-gold" /> x{car.luggage} {t.luggage}
-                          </span>
+                          <span className="flex items-center gap-1.5"><Briefcase size={14} className="text-gold" /> {car.luggage} {t.luggage}</span>
                         )}
                         {car.hasAC && (
-                          <span className="flex items-center gap-1.5">
-                            <Snowflake size={14} className="text-gold" /> {t.ac}
-                          </span>
+                          <span className="flex items-center gap-1.5"><Snowflake size={14} className="text-gold" /> {t.ac}</span>
                         )}
                       </div>
 
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-[10px] uppercase tracking-widest text-cream/40 mb-1">{t.totalPrice}</p>
-                          {car.price != null && Number(car.price) > 0 ? (
-                            <p className="text-3xl font-serif text-gold">{car.price} €</p>
-                          ) : (
-                            <p className="text-sm text-muted italic">{t.priceOnRequest}</p>
-                          )}
-                        </div>
-                        <span className={`text-[10px] border px-2 py-1 rounded uppercase tracking-wider ${
-                          tripData.tripType === 'round-trip'
-                            ? 'text-purple-400 border-purple-400/30 bg-purple-400/5'
-                            : 'text-blue-400 border-blue-400/30 bg-blue-400/5'
-                        }`}>
-                          {tripData.tripType === 'round-trip' ? t.roundTrip : t.oneWay}
-                        </span>
+                      <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-1.5 rounded-md text-xs text-cream/80 mb-4">
+                        <Clock size={13} className="text-gold" /> {t.duration} : 45 min (estimé)
                       </div>
+
+                      <div className="flex flex-wrap justify-center md:justify-start gap-4 text-[11px] text-cream/50">
+                        <span className="flex items-center gap-1"><Check size={12} className="text-green-500" /> {t.freeWait}</span>
+                        <span className="flex items-center gap-1"><Check size={12} className="text-green-500" /> {t.flightTrack}</span>
+                        <span className="flex items-center gap-1"><Check size={12} className="text-green-500" /> {t.tolls}</span>
+                      </div>
+                    </div>
+
+                    {/* Prix + Bouton à droite */}
+                    <div className="w-full md:w-40 flex-shrink-0 flex flex-row md:flex-col items-center md:items-end justify-between md:justify-center border-t md:border-t-0 md:border-l border-white/10 pt-4 md:pt-0 md:pl-6 mt-2 md:mt-0">
+                      <div className="text-right">
+                        <p className="text-[10px] text-muted mb-1 hidden md:block">{t.totalPrice}</p>
+                        {car.price != null && Number(car.price) > 0 ? (
+                          <p className="text-3xl font-serif text-gold mb-2">{car.price} €</p>
+                        ) : (
+                          <p className="text-sm text-muted italic mb-2">{t.priceOnRequest}</p>
+                        )}
+                      </div>
+                      
+                      <button
+                        onClick={() => handleNext(car)}
+                        className="bg-gold hover:bg-gold-light text-dark font-bold uppercase text-[10px] tracking-widest px-6 py-3 rounded-md transition-all flex items-center justify-center gap-2 shadow-lg shadow-gold/20"
+                      >
+                        {t.continueBtn} <ArrowRight size={14} />
+                      </button>
                     </div>
                   </div>
                 ))}
               </div>
             )}
-
-            {/* Bouton Continuer */}
-            <div className="flex justify-center md:justify-start mt-10 animate-fade-in">
-              <button
-                onClick={handleNext}
-                disabled={!selectedId}
-                className={`group relative flex items-center justify-center gap-4 px-16 py-5 uppercase text-xs tracking-[4px] font-bold transition-all overflow-hidden w-full md:w-auto ${
-                  selectedId ? 'bg-gold text-dark' : 'bg-white/5 text-white/20 cursor-not-allowed border border-white/10'
-                }`}
-              >
-                <span className="relative z-10 flex items-center gap-3">
-                  {t.continueBtn} <ArrowRight size={18} />
-                </span>
-                {selectedId && (
-                  <div className="absolute inset-0 bg-white translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
-                )}
-              </button>
-            </div>
           </div>
 
-          {/* Colonne DROITE : Carte unifiée (4/12) - Collante au scroll */}
+          {/* Colonne DROITE : Carte unifiée (4/12) */}
           <div className="lg:col-span-4 animate-fade-in delay-200 sticky top-32">
-            <div className="bg-dark-2/40 backdrop-blur-xl border border-white/10 p-6 rounded-xs">
+            <div className="bg-dark-2/40 backdrop-blur-xl border border-white/10 p-6 rounded-lg shadow-xl">
               
               <h3 className="font-serif text-xl mb-6 border-b border-white/5 pb-4 text-gold">
                 {t.tripDetails}
@@ -314,7 +315,7 @@ export default function SelectVehicle() {
               </div>
 
               {/* Carte Google Maps Intégrée */}
-              <div className="border border-white/10 rounded-sm overflow-hidden bg-[#1F1F2E]">
+              <div className="border border-white/10 rounded-md overflow-hidden bg-[#1F1F2E]">
                 <div className="relative h-[220px] w-full">
                   <iframe
                     title="Carte du trajet"
