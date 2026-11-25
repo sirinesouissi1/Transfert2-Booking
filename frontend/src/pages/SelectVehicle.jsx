@@ -24,7 +24,6 @@ const translations = {
     openMaps: "Ouvrir dans Google Maps",
     tripDetails: "Détails du Trajet",
     vehiclesAvailable: "véhicules disponibles",
-    duration: "Durée estimée",
     freeWait: "Temps d'attente offert",
     flightTrack: "Suivi de vol",
     tolls: "Péages inclus",
@@ -229,9 +228,7 @@ export default function SelectVehicle() {
                         )}
                       </div>
 
-                      <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-1.5 rounded-md text-xs text-cream/80 mb-4">
-                        <Clock size={13} className="text-gold" /> {t.duration} : 45 min (estimé)
-                      </div>
+                   
 
                       <div className="flex flex-wrap justify-center md:justify-start gap-4 text-[11px] text-cream/50">
                         <span className="flex items-center gap-1"><Check size={12} className="text-green-500" /> {t.freeWait}</span>
