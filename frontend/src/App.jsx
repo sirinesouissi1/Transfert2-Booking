@@ -35,6 +35,7 @@ import AdminClients from './pages/admin/AdminClients';
 import AdminVehicules from './pages/admin/AdminVehicules';
 import AdminTransferts from './pages/admin/AdminTransferts';
 import AdminExcursionBookings from './pages/admin/AdminExcursionBookings';
+import ScrollToTop from './components/ScrollToTop'; // <-- Importez le composant
 
 // Guards
 const PrivateRoute = ({ children }) => {
@@ -52,6 +53,8 @@ export default function App() {
   return (
     <LanguageProvider>
       <BrowserRouter>
+              <ScrollToTop />
+
         <Toaster
           position="top-right"
           toastOptions={{

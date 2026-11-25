@@ -177,3 +177,6 @@ mongoose
     process.exit(1);
   });
 
+  app.get('/health', (req, res) => {
+  res.status(200).send('OK');
+});
