@@ -1,4 +1,3 @@
-import { useTheme } from '../context/ThemeContext';  // ✅ CORRECT
 import { FiSun, FiMoon } from 'react-icons/fi';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
@@ -217,8 +216,15 @@ function DashboardInner({ toast }) {
   const prevPendingRef = useRef(null);
   const prevUnreadRef = useRef(null);
   const fetchingRef = useRef(false);
-  const { theme } = useTheme();
-const isDark = theme === 'dark';
+
+  // ✅ Thème LOCAL au dashboard uniquement
+const [dashTheme, setDashTheme] = useState(() => {
+  if (typeof window === 'undefined') return 'dark';
+  return localStorage.getItem('dashTheme') || 'dark';
+});
+const isDark = dashTheme === 'dark';
+const toggleDashTheme = () => setDashTheme((t) => (t === 'dark' ? 'light' : 'dark'));
+
 const chart = {
   axis:    isDark ? '#aaa'    : '#2B2B3A',
   grid:    isDark ? '#333'    : '#D8D3C7',
@@ -387,10 +393,10 @@ const chart = {
     fetchData();
   }, [fetchData]);
 
-  useEffect(() => {
-  document.documentElement.setAttribute('data-theme', theme);
-  localStorage.setItem('theme', theme);
-}, [theme]);
+// ✅ Persistance locale uniquement (n'affecte pas <html>)
+useEffect(() => {
+  localStorage.setItem('dashTheme', dashTheme);
+}, [dashTheme]);
 
   useEffect(() => {
     if (!isAdmin) return undefined;
@@ -591,8 +597,12 @@ const chart = {
   const isActive = (view) => currentView === view;
 
   return (
-<div className="dash-root flex h-screen" style={{ backgroundColor: 'var(--dash-bg)', color: 'var(--dash-text)' }}>
-<aside
+   <div data-theme={dashTheme}>                       {/* ⬅️ NOUVEAU wrapper */}
+      <div
+        className="dash-root flex h-screen"
+        style={{ backgroundColor: 'var(--dash-bg)', color: 'var(--dash-text)' }}
+      >
+  <aside
   className={`fixed md:static inset-y-0 left-0 z-50 w-64 flex flex-col border-r transform transition-transform md:translate-x-0 ${
     mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
   }`}
@@ -727,7 +737,7 @@ const chart = {
       </span>
 
       {/* 🌗 TOGGLE DARK / LIGHT */}
-      <ThemeToggle />
+<ThemeToggle theme={dashTheme} onToggle={toggleDashTheme} />
 
       <button
         onClick={handleLogout}
@@ -1148,20 +1158,21 @@ const chart = {
         onCancel={closeConfirmModal}
       />
     </div>
-  );
+   </div>   
+
+);
 }
 
 
 // ------------------------------------------------------------------
 // 🌗 Toggle Dark / Light
 // ------------------------------------------------------------------
-function ThemeToggle() {
-  const { theme, toggleTheme } = useTheme();
+function ThemeToggle({ theme, onToggle }) {
   const isDark = theme === 'dark';
 
   return (
     <button
-      onClick={toggleTheme}
+      onClick={onToggle}
       className="p-2 rounded-md border transition-all duration-300 hover:scale-105"
       style={{
         backgroundColor: 'var(--dash-card)',
