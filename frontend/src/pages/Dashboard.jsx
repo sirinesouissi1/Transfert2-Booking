@@ -1,3 +1,5 @@
+import { useTheme } from '../context/ThemeContext';  // ✅ CORRECT
+import { FiSun, FiMoon } from 'react-icons/fi';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
@@ -215,7 +217,17 @@ function DashboardInner({ toast }) {
   const prevPendingRef = useRef(null);
   const prevUnreadRef = useRef(null);
   const fetchingRef = useRef(false);
-
+  const { theme } = useTheme();
+const isDark = theme === 'dark';
+const chart = {
+  axis:    isDark ? '#aaa'    : '#2B2B3A',
+  grid:    isDark ? '#333'    : '#D8D3C7',
+  tooltip: {
+    backgroundColor: isDark ? '#2A2A3C' : '#FFFFFF',
+    borderColor: '#C9A84C',
+    color: isDark ? '#fff' : '#0A0A12',
+  },
+};
   const [excursionBookings, setExcursionBookings] = useState([]);
   const [excursionBookingsAll, setExcursionBookingsAll] = useState([]);
   const [currentView, setCurrentView] = useState('dashboard');
@@ -374,6 +386,11 @@ function DashboardInner({ toast }) {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  useEffect(() => {
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('theme', theme);
+}, [theme]);
 
   useEffect(() => {
     if (!isAdmin) return undefined;
@@ -574,18 +591,17 @@ function DashboardInner({ toast }) {
   const isActive = (view) => currentView === view;
 
   return (
-    <div className="flex h-screen bg-[#1F1F2E] text-cream">
-      <aside
-        className={`
-        fixed md:static inset-y-0 left-0 z-50 w-64 bg-[#2A2A3C] border-r border-white/10 flex flex-col
-        transition-transform duration-300 ease-in-out
-        ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-      `}
-      >
+<div className="dash-root flex h-screen" style={{ backgroundColor: 'var(--dash-bg)', color: 'var(--dash-text)' }}>
+<aside
+  className={`fixed md:static inset-y-0 left-0 z-50 w-64 flex flex-col border-r transform transition-transform md:translate-x-0 ${
+    mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+  }`}
+  style={{ backgroundColor: 'var(--dash-card)', borderColor: 'var(--dash-border)' }}
+>
         <div className="p-6 border-b border-white/10 flex justify-between items-center">
           <Link to="/" className="font-serif text-2xl tracking-[4px] text-cream">
-            GO<span className="text-gold">TAXI</span>
-          </Link>
+  GO<span className="text-gradient-gold">TAXI</span>
+</Link>
           <button className="md:hidden text-muted hover:text-cream" onClick={() => setMobileMenuOpen(false)}>
             <FiX size={24} />
           </button>
@@ -678,30 +694,51 @@ function DashboardInner({ toast }) {
         />
       )}
 
-      <main className="flex-1 flex flex-col h-full overflow-hidden">
-        <div className="sticky top-0 z-30 bg-[#2A2A3C] border-b border-white/10 px-4 md:px-8 py-4 flex justify-between items-center">
-          <button
-            className="md:hidden p-2 text-cream hover:text-gold"
-            onClick={() => setMobileMenuOpen(true)}
-          >
-            <FiMenu size={24} />
-          </button>
+     <main className="flex-1 flex flex-col h-full overflow-hidden">
+  <div
+    className="sticky top-0 z-30 px-4 md:px-8 py-4 flex justify-between items-center"
+    style={{
+      backgroundColor: 'var(--dash-card)',
+      borderBottom: '1px solid var(--dash-border)',
+    }}
+  >
+    <button
+      className="md:hidden p-2"
+      style={{ color: 'var(--dash-text)' }}
+      onClick={() => setMobileMenuOpen(true)}
+    >
+      <FiMenu size={24} />
+    </button>
 
-          <div className="flex items-center gap-4 ml-auto">
-            <span className="text-sm text-cream">
-              <span className="text-muted hidden sm:inline">Bonjour, </span>
-              <span className="text-gold font-serif">{user?.firstName}</span>
-              {isAdmin && <span className="ml-2 text-xs bg-gold/20 text-gold px-2 py-0.5 rounded hidden sm:inline-block">Admin</span>}
-            </span>
-            <button
-              onClick={handleLogout}
-              className="p-2 text-muted hover:text-gold hover:bg-white/5 rounded transition-colors"
-              title="Déconnexion"
-            >
-              <FiLogOut size={18} />
-            </button>
-          </div>
-        </div>
+    <div className="flex items-center gap-3 ml-auto">
+      <span className="text-sm" style={{ color: 'var(--dash-text)' }}>
+        <span className="hidden sm:inline" style={{ color: 'var(--dash-muted)' }}>Bonjour, </span>
+        <span className="font-serif" style={{ color: 'var(--dash-gold)' }}>
+          {user?.firstName}
+        </span>
+        {isAdmin && (
+          <span
+            className="ml-2 text-xs px-2 py-0.5 rounded hidden sm:inline-block"
+            style={{ backgroundColor: 'var(--dash-hover)', color: 'var(--dash-gold)' }}
+          >
+            Admin
+          </span>
+        )}
+      </span>
+
+      {/* 🌗 TOGGLE DARK / LIGHT */}
+      <ThemeToggle />
+
+      <button
+        onClick={handleLogout}
+        className="p-2 rounded transition-colors"
+        style={{ color: 'var(--dash-muted)' }}
+        title="Déconnexion"
+      >
+        <FiLogOut size={18} />
+      </button>
+    </div>
+  </div>
 
         <div className="p-4 md:p-8 overflow-y-auto flex-1">
           {error && (
@@ -760,10 +797,10 @@ function DashboardInner({ toast }) {
                   ) : (
                     <ResponsiveContainer width="100%" height={300}>
                       <LineChart data={bookingsByMonth}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                        <XAxis dataKey="name" stroke="#aaa" tick={{ fill: '#aaa' }} />
-                        <YAxis stroke="#aaa" />
-                        <Tooltip contentStyle={{ backgroundColor: '#2A2A3C', borderColor: '#C9A84C', color: '#fff' }} />
+                        <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
+                        <XAxis dataKey="name" stroke={chart.axis} tick={{ fill: chart.axis }} />
+                        <YAxis stroke={chart.axis} />
+                        <Tooltip contentStyle={chart.tooltip} />
                         <Legend />
                         <Line type="monotone" dataKey="value" stroke="#C9A84C" strokeWidth={2} name="Réservations" />
                       </LineChart>
@@ -791,7 +828,7 @@ function DashboardInner({ toast }) {
                             <Cell key={`cell-${index}`} fill={STATUS_COLORS[entry.name] || '#C9A84C'} />
                           ))}
                         </Pie>
-                        <Tooltip contentStyle={{ backgroundColor: '#2A2A3C', borderColor: '#C9A84C' }} />
+                        <Tooltip contentStyle={chart.tooltip} />
                         <Legend />
                       </PieChart>
                     </ResponsiveContainer>
@@ -807,10 +844,10 @@ function DashboardInner({ toast }) {
                   ) : (
                     <ResponsiveContainer width="100%" height={300}>
                       <BarChart data={bookingsByType}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                        <XAxis dataKey="name" stroke="#aaa" />
-                        <YAxis stroke="#aaa" />
-                        <Tooltip contentStyle={{ backgroundColor: '#2A2A3C', borderColor: '#C9A84C' }} />
+                        <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
+                        <XAxis dataKey="name" stroke={chart.axis} />
+                        <YAxis stroke={chart.axis} />
+                        <Tooltip contentStyle={chart.tooltip} />
                         <Legend />
                         <Bar dataKey="value" fill="#C9A84C" name="Nombre de réservations" />
                       </BarChart>
@@ -984,15 +1021,16 @@ function DashboardInner({ toast }) {
             />
           )}
 
-          {currentView === 'calendar' && (
-            <BookingCalendar
-              bookings={bookings}
-              excursionBookings={excursionBookingsAll}
-              vehicles={vehicles}
-              excursions={excursions}
-              onRefresh={() => fetchData(true)}
-            />
-          )}
+         {currentView === 'calendar' && (
+  <BookingCalendar
+    bookings={bookings}
+    excursionBookings={excursionBookingsAll}
+    vehicles={vehicles}
+    excursions={excursions}
+    onRefresh={() => fetchData(true)}
+    readOnly={true}  // <--- AJOUTEZ CETTE LIGNE
+  />
+)}
 
           {currentView === 'messages' && (
             <div className="bg-[#2A2A3C] border border-white/10 rounded-lg p-6">
@@ -1110,6 +1148,31 @@ function DashboardInner({ toast }) {
         onCancel={closeConfirmModal}
       />
     </div>
+  );
+}
+
+
+// ------------------------------------------------------------------
+// 🌗 Toggle Dark / Light
+// ------------------------------------------------------------------
+function ThemeToggle() {
+  const { theme, toggleTheme } = useTheme();
+  const isDark = theme === 'dark';
+
+  return (
+    <button
+      onClick={toggleTheme}
+      className="p-2 rounded-md border transition-all duration-300 hover:scale-105"
+      style={{
+        backgroundColor: 'var(--dash-card)',
+        borderColor: 'var(--dash-border)',
+        color: 'var(--dash-text)',
+      }}
+      title={isDark ? 'Passer en mode clair' : 'Passer en mode sombre'}
+      aria-label={isDark ? 'Activer le mode clair' : 'Activer le mode sombre'}
+    >
+      {isDark ? <FiSun size={18} /> : <FiMoon size={18} />}
+    </button>
   );
 }
 

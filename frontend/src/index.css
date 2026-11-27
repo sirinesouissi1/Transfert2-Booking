@@ -124,3 +124,139 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 input[type="date"]::-webkit-calendar-picker-indicator:hover {
     opacity: 1;
 }
+
+
+
+/* src/index.css */
+
+/* ---------- MODE SOMBRE (par défaut) ---------- */
+:root,
+[data-theme="dark"] {
+  --dash-bg:        #1F1F2E;
+  --dash-card:      #2A2A3C;
+  --dash-nested:    #35354A;
+  --dash-input:     #35354A;
+
+  --dash-text:      #F5F0E8;   /* cream */
+  --dash-muted:     #8B8B9E;
+  --dash-gold:      #C9A84C;
+
+  --dash-border:    rgba(255, 255, 255, 0.10);
+  --dash-hover:     rgba(255, 255, 255, 0.05);
+  --dash-overlay:   rgba(0, 0, 0, 0.70);
+  --dash-shadow:    0 10px 30px -10px rgba(0, 0, 0, 0.6);
+}
+
+/* ---------- MODE CLAIR ---------- */
+
+
+/* Transition douce entre les deux modes */
+body {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+
+
+
+
+
+
+
+/* ================== THEME DASHBOARD ================== */
+:root,
+[data-theme="dark"] {
+  --dash-bg:      #1F1F2E;
+  --dash-card:    #2A2A3C;
+  --dash-nested:  #35354A;
+  --dash-text:    #F5F0E8;
+  --dash-muted:   #8B8B9E;
+  --dash-gold:    #C9A84C;
+  --dash-border:  rgba(255,255,255,.10);
+  --dash-hover:   rgba(255,255,255,.05);
+  --gold-gradient: linear-gradient(135deg, #C9A84C, #E8C97A);
+}
+
+[data-theme="light"] {
+  --dash-bg:      #F6F4EF;
+  --dash-card:    #FFFFFF;
+  --dash-nested:  #F0EDE7;
+  --dash-text:    #0A0A12;   /* noir profond (avant : #1A1A26) */
+  --dash-muted:   #3D3D4F;   /* gris très foncé (avant : #6B6B7E) */
+  --dash-gold:    #7A5A10;   /* doré foncé, bien lisible sur fond clair */
+  --dash-border:  rgba(0,0,0,.14);
+  --dash-hover:   rgba(0,0,0,.05);
+  --gold-gradient: linear-gradient(135deg, #B8892B, #E2C277);
+}
+[data-theme="light"] .dash-root {
+  color: var(--dash-text);
+}
+
+/* Titres un peu plus affirmés en mode clair */
+[data-theme="light"] .dash-root h1,
+[data-theme="light"] .dash-root h2,
+[data-theme="light"] .dash-root h3 {
+  color: var(--dash-text);
+}
+
+/* Placeholders lisibles */
+[data-theme="light"] .dash-root ::placeholder {
+  color: #5A5A6E;
+  opacity: 1;
+}
+body { background: var(--dash-bg); color: var(--dash-text); }
+
+/* Dégradé du logo / titres */
+.text-gradient-gold {
+  background: var(--gold-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ---------- Remapping des classes fixes (mode clair uniquement) ---------- */
+[data-theme="light"] .dash-root {
+  /* Fonds */
+  --_card: var(--dash-card);
+}
+[data-theme="light"] .dash-root [class~="bg-[#2A2A3C]"],
+[data-theme="light"] .dash-root [class~="bg-dark-2"]   { background-color: var(--dash-card); }
+
+[data-theme="light"] .dash-root [class~="bg-[#35354A]"],
+[data-theme="light"] .dash-root [class~="bg-dark-3"]   { background-color: var(--dash-nested); }
+
+[data-theme="light"] .dash-root [class~="bg-[#35354A]/50"] { background-color: var(--dash-nested); }
+
+/* Textes : blanc/crème -> noir */
+[data-theme="light"] .dash-root [class~="text-cream"],
+[data-theme="light"] .dash-root [class~="text-cream/90"],
+[data-theme="light"] .dash-root [class~="text-cream/80"],
+[data-theme="light"] .dash-root [class~="text-cream/70"],
+[data-theme="light"] .dash-root [class~="hover:text-cream"]:hover { color: var(--dash-text); }
+
+[data-theme="light"] .dash-root [class~="text-muted"] { color: var(--dash-muted); }
+
+/* Doré : plus foncé pour rester lisible */
+[data-theme="light"] .dash-root [class~="text-gold"],
+[data-theme="light"] .dash-root [class~="hover:text-gold"]:hover { color: var(--dash-gold); }
+
+/* Boutons dorés : dégradé clair, texte sombre conservé */
+[data-theme="light"] .dash-root [class~="bg-gold"] { background-image: var(--gold-gradient); }
+
+/* Bordures et survols */
+[data-theme="light"] .dash-root [class*="border-white"] { border-color: var(--dash-border); }
+[data-theme="light"] .dash-root [class~="hover:bg-white/5"]:hover,
+[data-theme="light"] .dash-root [class~="bg-white/5"]  { background-color: var(--dash-hover); }
+[data-theme="light"] .dash-root .divide-white\/5 > * + * { border-color: var(--dash-border); }
+
+/* Champs de formulaire */
+[data-theme="light"] .dash-root input,
+[data-theme="light"] .dash-root select,
+[data-theme="light"] .dash-root textarea {
+  color: var(--dash-text);
+  background-color: var(--dash-card);
+}
+[data-theme="light"] .dash-root input[type="date"]::-webkit-calendar-picker-indicator { filter: none; }
+
+/* Modales / overlays plus doux */
+[data-theme="light"] .dash-root [class~="bg-black/70"],
+[data-theme="light"] .dash-root [class~="bg-black/60"] { background-color: rgba(0,0,0,.35); }
